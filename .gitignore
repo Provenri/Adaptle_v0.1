@@ -1,0 +1,3 @@
+# Secrets for CLI tooling — gitignored, never commit.
+.env
+.env.local
