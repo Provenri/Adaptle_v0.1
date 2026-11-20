@@ -6,6 +6,7 @@ export type LibraryBook = {
   isbn13: string;
   title: string;
   author: string;
+  publicationYear?: number;
   genre: string | null;
   coverTheme: CoverTheme;
   status: ShelfStatus;
@@ -20,6 +21,7 @@ export type BookCandidate = Omit<
   'status' | 'movieTitle' | 'movieYear' | 'tmdbId' | 'moviePosterPath'
 > & {
   numberOfPages: number | null;
+  publicationYear: number | null;
   subjects: readonly string[];
   source: 'openlibrary_manual' | 'googlebooks_manual';
 };

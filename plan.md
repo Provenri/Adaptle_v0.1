@@ -88,7 +88,6 @@ Repository layout:
 
 - **Push notifications:** `expo-notifications` daily reminder (local scheduled notification at launch; Expo Push via Supabase later).
 - **Reader DNA:** attribute bars computed client-side from saved-book genres; new section in My Library.
-- **DNB German catalog:** add `language` column + seeding adapter stub for Deutsche Nationalbibliothek (CC0); behind a feature flag.
 - **Account linking:** Apple/Google sign-in linking to the anonymous user (Supabase `linkIdentity`).
 
 ## Phase 3 — Monetization (scaffolding only)
@@ -96,6 +95,38 @@ Repository layout:
 - Feature-flag framework (`app_config` table + local overrides).
 - **Adaptle Plus** gating: archive puzzle screen (locked state), streaming release alerts stub, paywall placeholder screen.
 - TMDB commercial-license checklist documented in README; no payment SDK integration yet (needs store accounts).
+
+## Branching Strategy After Phase 1
+
+### Git
+
+- Protect `main` as the production/release branch.
+- Implement Phase 2 in `feature/*` branches.
+- Merge through reviewed pull requests after tests and staging validation.
+- Add a `develop` integration branch only if parallel Phase 2 work needs it.
+
+### Supabase
+
+- Use a separate preview branch or staging project for development.
+- Never apply experimental migrations directly to production.
+- Add new forward-only migrations; never rewrite migrations already deployed.
+- Test schema, RLS, functions, and content in staging before production.
+
+### EAS environments
+
+- `development`: development Supabase and local development builds.
+- `preview`: staging Supabase and pre-release QA.
+- `production`: live Supabase and release/store builds.
+
+Match each build profile and Expo Update channel to its intended environment.
+
+### Safe rollout rules
+
+- Maintain compatibility with older and newer app versions during rollout.
+- Add optional backend capabilities before client features require them.
+- Preserve existing endpoints and avoid destructive schema/RLS changes.
+- Gate incomplete Phase 2 functionality behind feature flags.
+- Back up production data before content or schedule updates.
 
 ---
 
@@ -120,7 +151,7 @@ Repository layout:
 | 15 | qa-mvp | play-tab-screens, reveal-share, library-tab, streaks-scores, seeding-upload |
 | 16 | phase2-notifications | qa-mvp |
 | 17 | phase2-reader-dna | qa-mvp |
-| 18 | phase2-dnb-linking | qa-mvp |
+| 18 | phase2-account-linking | qa-mvp |
 | 19 | phase3-scaffolding | qa-mvp |
 
 ## Notes & Considerations

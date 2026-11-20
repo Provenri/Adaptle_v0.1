@@ -99,6 +99,7 @@ export function toCatalogRow(item: ScheduledBook): Record<string, unknown> {
     cover_theme: book.coverTheme,
     metadata_source: 'wikidata_openlibrary',
     number_of_pages: book.numberOfPages,
+    publication_year: book.bookPublicationYear,
     tmdb_id: book.tmdbId,
     movie_title: book.tmdbTitle,
     release_year: book.releaseYear,

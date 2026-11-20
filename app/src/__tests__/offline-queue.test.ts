@@ -89,4 +89,19 @@ describe('offline mutation queue', () => {
       'score-new',
     ]);
   });
+
+  it('lets a library removal supersede an earlier save', () => {
+    enqueueOfflineMutation({
+      id: 'saved',
+      type: 'library-upsert',
+      payload: { isbn13: '9780000000001', status: 'TO_BE_READ' },
+    });
+    enqueueOfflineMutation({
+      id: 'removed',
+      type: 'library-delete',
+      payload: { isbn13: '9780000000001' },
+    });
+
+    expect(getOfflineMutations().map((mutation) => mutation.type)).toEqual(['library-delete']);
+  });
 });

@@ -13,6 +13,7 @@ import type { BonusItem, DailyRoundDetails, ProductionDailyPuzzle } from '@/lib/
 import {
   createGameState,
   gameReducer,
+  getNameInitials,
   getRoundBreakdown,
   getRoundPotential,
   getTotalPoints,
@@ -52,7 +53,7 @@ function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
   const enginePuzzle = dailyPuzzle.puzzle;
   const [state, dispatch] = useReducer(gameReducer, enginePuzzle, createGameState);
   const [savedThisSession, setSavedThisSession] = useState<Record<string, true>>({});
-  const { books, currentStreak, saveScore, saveBook, scores } = useLibrary();
+  const { books, currentStreak, saveScore, saveBook, scores, resetTodayScore } = useLibrary();
   const round = enginePuzzle.rounds[state.roundIndex];
   const details = dailyPuzzle.roundDetails[round.id];
   const lastResult = state.results.at(-1);
@@ -88,6 +89,15 @@ function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
               puzzleNumber={completedScore.puzzleNumber}
               savedCount={Object.keys(savedThisSession).length}
               streak={currentStreak}
+              onReplay={
+                __DEV__
+                  ? async () => {
+                      await resetTodayScore(completedScore.puzzleDate);
+                      completedScoreSaved.current = false;
+                      dispatch({ type: 'reset-game' });
+                    }
+                  : undefined
+              }
             />
           </ScrollView>
         </SafeAreaView>
@@ -180,6 +190,15 @@ function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
               puzzleNumber={dailyPuzzle.id}
               savedCount={Object.keys(savedThisSession).length}
               streak={currentStreak}
+              onReplay={
+                __DEV__
+                  ? async () => {
+                      await resetTodayScore(dailyPuzzle.puzzleDate);
+                      completedScoreSaved.current = false;
+                      dispatch({ type: 'reset-game' });
+                    }
+                  : undefined
+              }
             />
           ) : null}
         </ScrollView>
@@ -243,13 +262,14 @@ function QuestionView({ details, hintsUsed, round, onHint, onAnswer }: QuestionV
         />
         <View style={styles.prompt}>
           <ThemedText type="smallBold" style={styles.kicker}>
-            Which characters belong to the screen adaptation?
+            Which actors star in the screen adaptation?
           </ThemedText>
           <ThemedText type="subtitle" style={styles.bookTitle}>
             {details.title}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             by {details.author}
+            {details.publicationYear ? ` · ${details.publicationYear}` : ''}
           </ThemedText>
         </View>
       </View>
@@ -260,23 +280,23 @@ function QuestionView({ details, hintsUsed, round, onHint, onAnswer }: QuestionV
         </ThemedText>
         <HintCard
           number={1}
-          title="Setting"
+          title="Movie title letters"
           unlocked={hintsUsed >= 1}
-          value={details.settingHint}
+          value={maskMovieTitle(details.movieTitle)}
           action={hintsUsed === 0 ? onHint : undefined}
         />
         <HintCard
           number={2}
-          title="Character roles"
+          title="Year and setting"
           unlocked={hintsUsed >= 2}
-          value={details.characterHint}
+          value={`${details.releaseYear} · ${details.settingHint}`}
           action={hintsUsed === 1 ? onHint : undefined}
         />
         <HintCard
           number={3}
-          title="Movie title letters"
+          title="Lead actor initials"
           unlocked={hintsUsed >= 3}
-          value={maskMovieTitle(details.movieTitle)}
+          value={getNameInitials(details.cast)}
           action={hintsUsed === 2 ? onHint : undefined}
           actionLabel="Unlock final clue · 1 pt"
         />
@@ -284,7 +304,7 @@ function QuestionView({ details, hintsUsed, round, onHint, onAnswer }: QuestionV
 
       <View style={styles.section}>
         <ThemedText type="smallBold" style={styles.sectionTitle}>
-          Select the matching cast
+          Select the matching actors
         </ThemedText>
         {round.map((choice, index) => (
           <Pressable
@@ -401,6 +421,9 @@ function RevealView({
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Cast: {details.cast}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Characters: {details.characters}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Stream:{' '}
@@ -597,12 +620,14 @@ function SummaryView({
   savedCount,
   puzzleNumber,
   streak,
+  onReplay,
 }: {
   total: number;
   breakdown: number[];
   savedCount: number;
   puzzleNumber: string;
   streak: number;
+  onReplay?: () => Promise<void>;
 }) {
   const scoreCard = useRef<ViewShotRef>(null);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -647,6 +672,13 @@ function SummaryView({
           {savedCount} {savedCount === 1 ? 'book' : 'books'} saved to your shelf today
         </ThemedText>
         <PrimaryButton label="Share daily score card" onPress={share} />
+        {onReplay ? (
+          <Pressable accessibilityRole="button" onPress={() => void onReplay()}>
+            <ThemedText type="smallBold" style={styles.devReplayButton}>
+              Replay today (development)
+            </ThemedText>
+          </Pressable>
+        ) : null}
         {shareError ? (
           <ThemedText accessibilityRole="alert" type="small" style={styles.wrongText}>
             {shareError}
@@ -1003,6 +1035,11 @@ const styles = StyleSheet.create({
   },
   summaryCopy: {
     gap: Spacing.three,
+  },
+  devReplayButton: {
+    color: '#A84732',
+    padding: Spacing.two,
+    textAlign: 'center',
   },
   breakdown: {
     flexDirection: 'row',

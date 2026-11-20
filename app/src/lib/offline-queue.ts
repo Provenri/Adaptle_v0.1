@@ -4,6 +4,7 @@ const QUEUE_KEY = 'offline-mutations';
 
 export type OfflineMutation =
   | { id: string; type: 'library-upsert'; payload: Record<string, unknown>; createdAt: number }
+  | { id: string; type: 'library-delete'; payload: Record<string, unknown>; createdAt: number }
   | {
       id: string;
       type: 'daily-score-upsert';

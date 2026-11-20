@@ -6,7 +6,7 @@ import {
 } from 'expo-camera';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TypographicCover } from '@/components/typographic-cover';
@@ -22,14 +22,17 @@ import {
 } from '@/data/library-data';
 import { searchBookCatalog } from '@/lib/supabase';
 import { useLibrary } from '@/providers/app-data-provider';
+import { PrivacyPolicyContent } from './privacy';
 
 type ShelfFilter = ShelfStatus | 'ALL';
 
 export default function LibraryScreen() {
-  const { books, isLibraryLoading, libraryError, saveBook, updateStatus } = useLibrary();
+  const { books, isLibraryLoading, libraryError, removeBook, saveBook, updateStatus } =
+    useLibrary();
   const [filter, setFilter] = useState<ShelfFilter>('ALL');
   const [query, setQuery] = useState('');
   const [addBookOpen, setAddBookOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const counts = useMemo(
     () => ({
       TO_BE_READ: books.filter((book) => book.status === 'TO_BE_READ').length,
@@ -129,15 +132,44 @@ export default function LibraryScreen() {
                   book={book}
                   key={book.isbn13}
                   onStatusChange={(status) => updateStatus(book.isbn13, status)}
+                  onRemove={() =>
+                    Alert.alert(
+                      'Remove from library?',
+                      `Remove “${book.title}” from your shelf? You can add it again later.`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Remove',
+                          style: 'destructive',
+                          onPress: () => removeBook(book.isbn13),
+                        },
+                      ]
+                    )
+                  }
                 />
               ))}
             </View>
           ) : (
             <EmptyShelf query={query} onAdd={() => setAddBookOpen(true)} />
           )}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setPrivacyOpen(true)}
+            style={styles.privacyLink}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Privacy Policy
+            </ThemedText>
+          </Pressable>
         </ScrollView>
 
         <AddBookModal onAdd={addBook} onClose={() => setAddBookOpen(false)} visible={addBookOpen} />
+        <Modal
+          animationType="slide"
+          onRequestClose={() => setPrivacyOpen(false)}
+          presentationStyle="fullScreen"
+          visible={privacyOpen}>
+          <PrivacyPolicyContent onBack={() => setPrivacyOpen(false)} />
+        </Modal>
       </SafeAreaView>
     </ThemedView>
   );
@@ -176,9 +208,11 @@ function ShelfFilterButton({
 function LibraryBookCard({
   book,
   onStatusChange,
+  onRemove,
 }: {
   book: LibraryBook;
   onStatusChange: (status: ShelfStatus) => void;
+  onRemove: () => void;
 }) {
   const [editingStatus, setEditingStatus] = useState(false);
   const providers = useTmdbProviders(book.tmdbId);
@@ -200,6 +234,7 @@ function LibraryBookCard({
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {book.author}
+            {book.publicationYear ? ` · ${book.publicationYear}` : ''}
           </ThemedText>
           {book.movieTitle ? (
             <>
@@ -236,21 +271,31 @@ function LibraryBookCard({
       </View>
       {editingStatus ? (
         <View style={styles.statusMenu}>
-          {(Object.keys(SHELF_LABELS) as ShelfStatus[]).map((status) => (
+          <View style={styles.statusOptions}>
+            {(Object.keys(SHELF_LABELS) as ShelfStatus[]).map((status) => (
+              <Pressable
+                accessibilityRole="button"
+                key={status}
+                onPress={() => {
+                  onStatusChange(status);
+                  setEditingStatus(false);
+                }}
+                style={({ pressed }) => [styles.statusOption, pressed && styles.pressed]}>
+                <ThemedText type="small" style={styles.darkText}>
+                  {book.status === status ? '✓ ' : ''}
+                  {SHELF_LABELS[status]}
+                </ThemedText>
+              </Pressable>
+            ))}
             <Pressable
               accessibilityRole="button"
-              key={status}
-              onPress={() => {
-                onStatusChange(status);
-                setEditingStatus(false);
-              }}
-              style={({ pressed }) => [styles.statusOption, pressed && styles.pressed]}>
-              <ThemedText type="small" style={styles.darkText}>
-                {book.status === status ? '✓ ' : ''}
-                {SHELF_LABELS[status]}
+              onPress={onRemove}
+              style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}>
+              <ThemedText type="smallBold" style={styles.removeText}>
+                Remove
               </ThemedText>
             </Pressable>
-          ))}
+          </View>
         </View>
       ) : null}
     </View>
@@ -509,7 +554,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
-  statusMenu: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  statusMenu: { gap: Spacing.two },
+  statusOptions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  removeButton: {
+    borderColor: '#A84732',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  removeText: { color: '#A84732' },
   statusOption: {
     backgroundColor: '#E8E1D7',
     borderRadius: 999,
@@ -570,6 +629,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   permissionText: { color: '#A84732' },
+  privacyLink: {
+    alignItems: 'center',
+    paddingVertical: Spacing.four,
+  },
   errorText: { color: '#A84732', textAlign: 'center' },
   lightText: { color: '#FFFFFF' },
   darkText: { color: '#173E32' },

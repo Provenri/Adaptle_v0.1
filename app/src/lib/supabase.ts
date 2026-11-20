@@ -76,6 +76,10 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
         genre: optionalString(mutation.payload.genre),
         cover_theme: requiredString(mutation.payload.coverTheme, 'coverTheme'),
         metadata_source: optionalString(mutation.payload.source) ?? 'openlibrary_manual',
+        publication_year:
+          typeof mutation.payload.publicationYear === 'number'
+            ? mutation.payload.publicationYear
+            : null,
         number_of_pages:
           typeof mutation.payload.numberOfPages === 'number'
             ? mutation.payload.numberOfPages
@@ -88,6 +92,17 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
       .from('user_library')
       .upsert({ user_id: user.id, isbn13, status }, { onConflict: 'user_id,isbn13' });
     if (shelfError) throw shelfError;
+    return;
+  }
+
+  if (mutation.type === 'library-delete') {
+    const isbn13 = requiredString(mutation.payload.isbn13, 'isbn13');
+    const { error: deleteError } = await supabase
+      .from('user_library')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('isbn13', isbn13);
+    if (deleteError) throw deleteError;
     return;
   }
 
@@ -124,6 +139,26 @@ export async function fetchDailyScores(): Promise<DailyScore[]> {
   }));
 }
 
+export async function deleteDailyScore(puzzleDate: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  await initializeAnonymousSession();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!user) throw new Error('A signed-in user is required to reset a daily score');
+
+  const { error } = await supabase
+    .from('daily_scores')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('puzzle_date', puzzleDate);
+  if (error) throw error;
+}
+
 export async function fetchUserLibrary(): Promise<LibraryBook[]> {
   const supabase = getSupabaseClient();
   if (!supabase) return [];
@@ -132,7 +167,7 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
   const { data, error } = await supabase
     .from('user_library')
     .select(
-      'isbn13,status,catalog_items(isbn13,book_title,author,genre,cover_theme,tmdb_id,movie_title,release_year,movie_poster_path)'
+      'isbn13,status,catalog_items(isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,movie_poster_path)'
     )
     .order('saved_at', { ascending: false });
   if (error) throw error;
@@ -145,6 +180,7 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
       isbn13: row.isbn13,
       title: catalog.book_title,
       author: catalog.author,
+      publicationYear: catalog.publication_year ?? undefined,
       genre: catalog.genre,
       coverTheme: catalog.cover_theme,
       status: row.status,

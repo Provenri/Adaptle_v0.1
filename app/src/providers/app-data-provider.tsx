@@ -5,6 +5,7 @@ import { AppState } from 'react-native';
 import { type BookCandidate, type LibraryBook, type ShelfStatus } from '@/data/library-data';
 import { fetchDailyPuzzle, type ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import {
+  clearOfflineMutations,
   enqueueOfflineMutation,
   flushOfflineMutations,
   getOfflineMutations,
@@ -13,6 +14,7 @@ import { persistQueryCache, queryClient } from '@/lib/query-client';
 import { localStorage } from '@/lib/local-storage';
 import {
   fetchDailyScores,
+  deleteDailyScore,
   fetchUserLibrary,
   getSupabaseClient,
   initializeAnonymousSession,
@@ -30,11 +32,15 @@ type LibraryContextValue = {
   scores: DailyScore[];
   currentStreak: number;
   saveBook: (
-    candidate: Omit<BookCandidate, 'numberOfPages' | 'subjects' | 'source'>,
+    candidate: Omit<BookCandidate, 'numberOfPages' | 'publicationYear' | 'subjects' | 'source'> & {
+      publicationYear?: number | null;
+    },
     status?: ShelfStatus
   ) => void;
   updateStatus: (isbn13: string, status: ShelfStatus) => void;
+  removeBook: (isbn13: string) => void;
   saveScore: (score: DailyScore) => void;
+  resetTodayScore: (puzzleDate: string) => Promise<void>;
 };
 
 const LibraryContext = createContext<LibraryContextValue | null>(null);
@@ -93,7 +99,9 @@ function LibraryProvider({ children }: { children: ReactNode }) {
           fetchUserLibrary(),
         ]);
         setScores((localScores) => mergeDailyScores(localScores, remoteScores));
-        setBooks(overlayPendingLibraryMutations(remoteLibrary));
+        setBooks((localLibrary) =>
+          overlayPendingLibraryMutations(mergeRemoteLibrary(remoteLibrary, localLibrary))
+        );
         setLibraryError(null);
       } catch (error) {
         setLibraryError(error instanceof Error ? error.message : 'Unable to sync your library.');
@@ -122,10 +130,24 @@ function LibraryProvider({ children }: { children: ReactNode }) {
           const existing = current.find((book) => book.isbn13 === candidate.isbn13);
           if (existing) {
             return current.map((book) =>
-              book.isbn13 === candidate.isbn13 ? { ...book, status } : book
+              book.isbn13 === candidate.isbn13
+                ? {
+                    ...book,
+                    ...candidate,
+                    publicationYear: candidate.publicationYear ?? book.publicationYear,
+                    status,
+                  }
+                : book
             );
           }
-          return [{ ...candidate, status }, ...current];
+          return [
+            {
+              ...candidate,
+              publicationYear: candidate.publicationYear ?? undefined,
+              status,
+            },
+            ...current,
+          ];
         });
         enqueueOfflineMutation({
           type: 'library-upsert',
@@ -146,6 +168,14 @@ function LibraryProvider({ children }: { children: ReactNode }) {
           setSyncVersion((version) => version + 1);
         }
       },
+      removeBook: (isbn13) => {
+        setBooks((current) => current.filter((book) => book.isbn13 !== isbn13));
+        enqueueOfflineMutation({
+          type: 'library-delete',
+          payload: { isbn13 },
+        });
+        setSyncVersion((version) => version + 1);
+      },
       saveScore: (score) => {
         setScores((current) => mergeDailyScores(current, [score]));
         enqueueOfflineMutation({
@@ -158,6 +188,18 @@ function LibraryProvider({ children }: { children: ReactNode }) {
         });
         setSyncVersion((version) => version + 1);
       },
+      resetTodayScore: async (puzzleDate) => {
+        if (!__DEV__) return;
+        await deleteDailyScore(puzzleDate);
+        setScores((current) => current.filter((score) => score.puzzleDate !== puzzleDate));
+        const pending = getOfflineMutations().filter(
+          (mutation) =>
+            mutation.type !== 'daily-score-upsert' || mutation.payload.puzzleDate !== puzzleDate
+        );
+        if (pending.length === getOfflineMutations().length) return;
+        clearOfflineMutations();
+        pending.forEach((mutation) => enqueueOfflineMutation(mutation));
+      },
     }),
     [books, isLibraryLoading, libraryError, scores]
   );
@@ -165,13 +207,36 @@ function LibraryProvider({ children }: { children: ReactNode }) {
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;
 }
 
+function mergeRemoteLibrary(remote: LibraryBook[], local: LibraryBook[]): LibraryBook[] {
+  const localByIsbn = new Map(local.map((book) => [book.isbn13, book]));
+  return remote.map((remoteBook) => {
+    const localBook = localByIsbn.get(remoteBook.isbn13);
+    if (!localBook) return remoteBook;
+    return {
+      ...remoteBook,
+      publicationYear: remoteBook.publicationYear ?? localBook.publicationYear,
+      tmdbId: remoteBook.tmdbId ?? localBook.tmdbId,
+      moviePosterPath: remoteBook.moviePosterPath ?? localBook.moviePosterPath,
+      movieTitle: remoteBook.movieTitle ?? localBook.movieTitle,
+      movieYear: remoteBook.movieYear ?? localBook.movieYear,
+    };
+  });
+}
+
 function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
   const result = [...remote];
   for (const mutation of getOfflineMutations()) {
-    if (mutation.type !== 'library-upsert') continue;
+    if (mutation.type === 'daily-score-upsert') continue;
     const payload = mutation.payload;
     const isbn13 = typeof payload.isbn13 === 'string' ? payload.isbn13 : null;
     const status = payload.status;
+    if (mutation.type === 'library-delete') {
+      if (isbn13) {
+        const index = result.findIndex((book) => book.isbn13 === isbn13);
+        if (index >= 0) result.splice(index, 1);
+      }
+      continue;
+    }
     if (!isbn13 || (status !== 'TO_BE_READ' && status !== 'FINISHED' && status !== 'SNOOZE')) {
       continue;
     }
@@ -189,6 +254,8 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
         isbn13,
         title: payload.title,
         author: payload.author,
+        publicationYear:
+          typeof payload.publicationYear === 'number' ? payload.publicationYear : undefined,
         genre: typeof payload.genre === 'string' ? payload.genre : null,
         coverTheme: payload.coverTheme as LibraryBook['coverTheme'],
         status,

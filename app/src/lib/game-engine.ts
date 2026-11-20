@@ -49,7 +49,8 @@ export type GameAction =
   | { type: 'unlock-hint' }
   | { type: 'submit-answer'; choiceId: string }
   | { type: 'continue' }
-  | { type: 'submit-bonus'; choiceId: string };
+  | { type: 'submit-bonus'; choiceId: string }
+  | { type: 'reset-game' };
 
 export function createGameState(puzzle: DailyPuzzle): GameState {
   validatePuzzle(puzzle);
@@ -92,6 +93,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         action.choiceId,
         'bonus-reveal'
       );
+    case 'reset-game':
+      return createGameState(state.puzzle);
   }
 }
 
@@ -129,6 +132,20 @@ export function maskMovieTitle(title: string): string {
         .replace(/ ([^\p{L}\p{N}_\s])/gu, '$1');
     })
     .join('');
+}
+
+export function getNameInitials(names: string): string {
+  return names
+    .split(/\s*(?:,|&)\s*/u)
+    .map((name) =>
+      name
+        .trim()
+        .split(/\s+/u)
+        .filter(Boolean)
+        .map((part) => `${part[0]?.toUpperCase()}.`)
+        .join(' ')
+    )
+    .join(' & ');
 }
 
 export function shuffleChoices(

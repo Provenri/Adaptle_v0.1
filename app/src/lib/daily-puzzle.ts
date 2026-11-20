@@ -9,6 +9,7 @@ export type CatalogRow = {
   isbn13: string;
   book_title: string;
   author: string;
+  publication_year: number | null;
   genre: string | null;
   cover_theme: CoverTheme;
   tmdb_id: number | null;
@@ -38,6 +39,7 @@ export type DailyRoundDetails = {
   isbn13: string;
   title: string;
   author: string;
+  publicationYear: number | null;
   genre: string | null;
   coverTheme: CoverTheme;
   settingHint: string;
@@ -46,6 +48,7 @@ export type DailyRoundDetails = {
   releaseYear: number;
   director: string;
   cast: string;
+  characters: string;
   tmdbId: number | null;
   moviePosterPath: string | null;
 };
@@ -87,7 +90,7 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const { data: rows, error: booksError } = await supabase
     .from('catalog_items')
     .select(
-      'isbn13,book_title,author,genre,cover_theme,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint'
+      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint'
     )
     .eq('scheduled_date', puzzleDate)
     .order('isbn13', { ascending: true });
@@ -120,7 +123,7 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const { data: bonusRows, error: bonusError } = await supabase
     .from('catalog_items')
     .select(
-      'isbn13,book_title,author,genre,cover_theme,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint'
+      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint'
     )
     .in('isbn13', bonusIsbns);
   if (bonusError) throw bonusError;
@@ -170,7 +173,7 @@ export function buildDailyPuzzle(
 function toGamePuzzle(date: string, books: CatalogRow[], thread: ThreadRow): DailyPuzzle {
   const castChoices = books.map((book): GameChoice => ({
     id: `${book.isbn13}-cast`,
-    label: readStringArray(book.lead_characters, 'lead_characters', 2).join(' & '),
+    label: readStringArray(book.lead_actors, 'lead_actors', 2).join(' & '),
   }));
 
   return {
@@ -213,6 +216,7 @@ function toRoundDetails(book: CatalogRow): DailyRoundDetails {
     isbn13: book.isbn13,
     title: book.book_title,
     author: book.author,
+    publicationYear: book.publication_year,
     genre: book.genre,
     coverTheme: book.cover_theme,
     settingHint: requireText(book.setting_hint, 'setting_hint'),
@@ -221,6 +225,7 @@ function toRoundDetails(book: CatalogRow): DailyRoundDetails {
     releaseYear: requireNumber(book.release_year, 'release_year'),
     director: requireText(book.director, 'director'),
     cast: readStringArray(book.lead_actors, 'lead_actors', 2).join(', '),
+    characters: readStringArray(book.lead_characters, 'lead_characters', 2).join(' & '),
     tmdbId: book.tmdb_id,
     moviePosterPath: book.movie_poster_path,
   };
@@ -243,6 +248,7 @@ function validateBooks(books: CatalogRow[]): void {
     requireText(book.book_title, 'book_title');
     requireText(book.author, 'author');
     readStringArray(book.lead_characters, 'lead_characters', 2);
+    readStringArray(book.lead_actors, 'lead_actors', 2);
     toRoundDetails(book);
   }
 }

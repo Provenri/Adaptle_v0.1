@@ -5,6 +5,7 @@ import {
   getRoundBreakdown,
   getRoundPotential,
   getTotalPoints,
+  getNameInitials,
   maskMovieTitle,
   shuffleChoices,
   type DailyPuzzle,
@@ -99,6 +100,18 @@ describe('game engine', () => {
     expect(gameReducer(state, { type: 'submit-bonus', choiceId: 'b' })).toBe(state);
   });
 
+  it('resets a completed game to its initial round', () => {
+    let state = createGameState(puzzle);
+    for (let index = 0; index < 5; index += 1) state = answerRound(state);
+    state = gameReducer(state, { type: 'submit-bonus', choiceId: 'b' });
+    state = gameReducer(state, { type: 'continue' });
+
+    const reset = gameReducer(state, { type: 'reset-game' });
+    expect(reset.phase).toBe('question');
+    expect(reset.roundIndex).toBe(0);
+    expect(reset.results).toEqual([]);
+  });
+
   it('rejects malformed puzzle payloads', () => {
     expect(() =>
       createGameState({
@@ -117,6 +130,11 @@ describe('game engine', () => {
 });
 
 describe('game helpers', () => {
+  it('formats lead actor initials', () => {
+    expect(getNameInitials('Harrison Ford, Sean Young')).toBe('H. F. & S. Y.');
+    expect(getNameInitials('Carey Mulligan & Matthias Schoenaerts')).toBe('C. M. & M. S.');
+  });
+
   it('masks a movie title while retaining punctuation and each word initial', () => {
     expect(maskMovieTitle('Blade Runner: 2049')).toBe('B _ _ _ _ R _ _ _ _ _: 2 0 4 9');
   });

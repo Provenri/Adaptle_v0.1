@@ -108,3 +108,15 @@ Test on a physical Android device through Expo Go:
 8. Release build.
 
 The first blocker is Supabase and credential configuration; the remaining Phase 1 work can then be completed end-to-end.
+
+## Current completion checkpoint
+
+- Supabase project linked and migrations verified.
+- Edge Functions deployed and smoke-tested.
+- Production daily puzzle, Library, and TMDB provider data connected.
+- Expo EAS project linked as `@provenri/adaptle`.
+- Android development build completed and passed physical-device QA.
+- Today's common-thread bonus inserted and verified.
+- Actor-based questions and the requested hint ladder tested.
+- Automated app, seeding, Edge Function, Android export, and Web export checks pass.
+- Remaining: final production EAS build, production-artifact device smoke test, and release.

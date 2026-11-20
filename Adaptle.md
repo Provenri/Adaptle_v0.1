@@ -1,7 +1,7 @@
 # Adaptle — Product & Technical Architecture Blueprint (Final)
 
 ## 1. Core Concept & Product Strategy
-**Adaptle** is a mobile-first, Wordle-style daily book-to-movie trivia game paired with an organic personal reading tracker (**`To be read`**, **`Finished`**, and **`Snooze`**). Instead of confronting new players with an empty shelf or copyrighted book summaries, users immediately play a **5-round daily character-matching challenge** plus a **Round 6 Common Thread Bonus**—building their reading list and streaming watchlist one tap at a time from every reveal card.
+**Adaptle** is a mobile-first, Wordle-style daily book-to-movie trivia game paired with an organic personal reading tracker (**`To be read`**, **`Finished`**, and **`Snooze`**). Instead of confronting new players with an empty shelf or copyrighted book summaries, users immediately play a **5-round daily cast-matching challenge** plus a **Round 6 Common Thread Bonus**—building their reading list and streaming watchlist one tap at a time from every reveal card.
 
 ### Key Differentiators
 * **Game-First Organic Library:** Solves the cold-start problem by letting users discover books through daily gameplay and save them directly from reveal cards.
@@ -59,13 +59,13 @@ To eliminate publisher cover copyright risk and broken external image URLs, ever
 
 ## 4. Daily Gameplay Loop, Hints & Scoring
 
-### Part 1: 5-Round Book-to-Movie Character Match (15 Points Max)
-1. **The Prompt:** Displays one book's **Auto-Generated Typographic Cover**, title, and author, alongside **3 shuffled character name pairs** from three adaptations (without naming the movies).
+### Part 1: 5-Round Book-to-Movie Cast Match (15 Points Max)
+1. **The Prompt:** Displays one book's **Auto-Generated Typographic Cover**, title, and author, alongside **3 shuffled lead-actor pairs** from three adaptations (without naming the movies).
 2. **The 3-Tier Progressive Hint Ladder:**
    * **Start (0 Hints Used):** **3 Points** potential.
-   * **Hint 1 — Movie Setting (Where & When):** Drops round potential to **2 Points** (e.g., *"Dystopian 2019 Los Angeles"*).
-   * **Hint 2 — Character Archetypes (Role & Trait):** Drops round potential to **1 Point** (e.g., *"A weary detective & an experimental android"*).
-   * **Hint 3 — Masked Movie Title (Hangman Letters):** Stays at **1 Point** as a final rescue clue (e.g., `B _ _ _ _   R _ _ _ _ _`).
+   * **Hint 1 — Masked Movie Title (Hangman Letters):** Drops round potential to **2 Points** (e.g., `B _ _ _ _   R _ _ _ _ _`).
+   * **Hint 2 — Release Year & Movie Setting:** Drops round potential to **1 Point** (e.g., *"1982 · Dystopian 2019 Los Angeles"*).
+   * **Hint 3 — Lead Actor Initials:** Stays at **1 Point** as a final rescue clue (e.g., `H. F. & S. Y.`).
    * **Wrong Guess:** **0 Points** (still displays the Reveal Card).
 3. **The Reveal Card:** Displays the hidden movie poster, release year, director, cast, and streaming providers (via TMDB), plus 1-tap shelf buttons (**`To be read`**, **`Finished`**, **`Snooze`**).
 
@@ -88,7 +88,7 @@ Players choose what both works share out of **3 choices** across `The Setting`, 
 │  Current Round Potential: [ 2 PTS ] (1 Hint Used)   │
 ├─────────────────────────────────────────────────────┤
 │                                                     │
-│   ┌─────────┐   WHICH CHARACTERS BELONG TO THE      │
+│  ┌─────────┐   WHICH ACTORS STAR IN THE              │
 │   │  TYPO-  │   SCREEN ADAPTATION OF THIS BOOK?     │
 │   │ GRAPHIC │                                       │
 │   │  COVER  │   Do Androids Dream of Electric       │
@@ -98,21 +98,21 @@ Players choose what both works share out of **3 choices** across `The Setting`, 
 ├─────────────────────────────────────────────────────┤
 │  NEED A CLUE? (Tap to unlock next hint)             │
 │                                                     │
-│  ✅ HINT 1 (Setting): Dystopian 2019 Los Angeles    │
-│  🔓 [ Unlock Hint 2: Character Roles (-1 pt) ]      │
-│  🔒 Hint 3: Movie Title Letters (Locked)            │
+│  ✅ HINT 1 (Title): B _ _ _ _   R _ _ _ _ _          │
+│  🔓 [ Unlock Hint 2: Year & Setting (-1 pt) ]       │
+│  🔒 Hint 3: Lead Actor Initials (Locked)            │
 │                                                     │
 ├─────────────────────────────────────────────────────┤
-│  SELECT THE MATCHING CAST:                          │
+│  SELECT THE MATCHING ACTORS:                        │
 │                                                     │
 │  ┌───────────────────────────────────────────────┐  │
-│  │  A   Rick Deckard & Rachael                   │  │
+│  │  A   Harrison Ford & Sean Young               │  │
 │  └───────────────────────────────────────────────┘  │
 │  ┌───────────────────────────────────────────────┐  │
-│  │  B   Paul Atreides & Chani                    │  │
+│  │  B   Timothée Chalamet & Rebecca Ferguson     │  │
 │  └───────────────────────────────────────────────┘  │
 │  ┌───────────────────────────────────────────────┐  │
-│  │  C   Teddy Daniels & Chuck Aule               │  │
+│  │  C   Leonardo DiCaprio & Mark Ruffalo         │  │
 │  └───────────────────────────────────────────────┘  │
 │                                                     │
 ├─────────────────────────────────────────────────────┤
@@ -368,5 +368,41 @@ STRICT RULES:
 
 ### Launch Phases
 1. **Phase 1 (MVP Launch):** Run the offline seeding script using **Wikidata SPARQL + Open Library (CC0) + TMDB + Gemini Flash-Lite** to populate 250 puzzles + 50 Common Thread pairs; launch the 2-tab React Native + Expo app on Supabase Frankfurt (`eu-central-1`).
-2. **Phase 2 (Retention & Polish):** Add daily push notifications, Reader DNA attribute bars (computed from saved book genres), and German-language catalog additions via **Deutsche Nationalbibliothek (DNB — CC0)**.
+2. **Phase 2 (Retention & Polish):** Add daily push notifications, Reader DNA attribute bars (computed from saved book genres), and account linking that preserves the anonymous user's library, scores, and streak.
 3. **Phase 3 (Monetization):** Activate TMDB commercial license and launch **Adaptle Plus** (unlimited archive puzzles, streaming release alerts for `To be read` books, and optional V2 "What Would I Do" AI playbooks).
+
+### Branching Strategy After Phase 1
+
+Once Phase 1 is live, production must be isolated from ongoing Phase 2 development.
+
+#### Git
+
+* Protect `main` as the production/release branch.
+* Develop each Phase 2 feature in a `feature/*` branch.
+* Merge through pull requests after automated and staging validation.
+* Add a `develop` integration branch if multiple large features need to land together.
+* Never rewrite production history or commit directly to `main` after launch.
+
+#### Supabase
+
+* Use a separate Supabase preview branch or staging project for Phase 2 work.
+* Never test migrations directly against production.
+* Add one new forward-only migration per schema change; do not edit migrations already applied to production.
+* Validate migrations, RLS, functions, and seeded data in staging before deployment.
+* Preserve backward compatibility because old and new app versions overlap during rollout.
+
+#### EAS Environments
+
+* `development`: developer tooling and development Supabase.
+* `preview`: staging Supabase and pre-release QA.
+* `production`: live Supabase and store/release builds.
+
+Build profiles and Expo Update channels must match their intended environment so Phase 2 code cannot accidentally receive production configuration.
+
+#### Compatibility & Feature Flags
+
+* Add optional columns, tables, and endpoints before making the client depend on them.
+* Keep existing endpoints working during staged rollouts.
+* Avoid destructive schema, RLS, or data changes.
+* Gate unfinished Phase 2 behavior behind remote or local feature flags.
+* Take a database backup or export before production content/schedule changes.

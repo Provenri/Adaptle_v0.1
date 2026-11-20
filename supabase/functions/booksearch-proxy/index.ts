@@ -18,6 +18,7 @@ import {
   type GoogleBooksVolume,
   normalizeIsbn13,
   type OpenLibrarySearchDoc,
+  parsePublicationYear,
 } from './normalize.ts';
 
 const OL_BASE = 'https://openlibrary.org';
@@ -25,13 +26,16 @@ const GB_BASE = 'https://www.googleapis.com/books/v1';
 const UA = 'Adaptle/0.1 (https://github.com/Provenri/Adaptle_v0.1)';
 
 async function searchOpenLibrary(query: string): Promise<BookCandidate[]> {
-  const url = `${OL_BASE}/search.json?q=${encodeURIComponent(query)}&limit=10&fields=${[
-    'title',
-    'author_name',
-    'isbn',
-    'number_of_pages_median',
-    'subject',
-  ].join(',')}`;
+  const url = `${OL_BASE}/search.json?q=${encodeURIComponent(query)}&limit=10&fields=${
+    [
+      'title',
+      'author_name',
+      'isbn',
+      'number_of_pages_median',
+      'first_publish_year',
+      'subject',
+    ].join(',')
+  }`;
   const response = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
   if (!response.ok) throw new Error(`Open Library search failed: ${response.status}`);
   const data = await response.json();
@@ -92,6 +96,7 @@ async function lookupOpenLibraryIsbn(isbn13: string): Promise<BookCandidate | nu
     title,
     author,
     numberOfPages: edition.number_of_pages ?? null,
+    publicationYear: parsePublicationYear(edition.publish_date),
     subjects,
     genre,
     coverTheme,
@@ -127,8 +132,8 @@ Deno.serve(async (req) => {
     if (action === 'isbn') {
       const isbn13 = normalizeIsbn13(url.searchParams.get('isbn') ?? '');
       if (!isbn13) return errorResponse('isbn must be a valid ISBN-13', 400);
-      const candidate =
-        (await lookupOpenLibraryIsbn(isbn13)) ?? (await lookupGoogleBooksIsbn(isbn13));
+      const candidate = (await lookupOpenLibraryIsbn(isbn13)) ??
+        (await lookupGoogleBooksIsbn(isbn13));
       return jsonResponse({ items: candidate ? [candidate] : [] });
     }
 

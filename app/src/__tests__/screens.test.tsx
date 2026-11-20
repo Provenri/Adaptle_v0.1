@@ -1,8 +1,10 @@
 import type { ReactElement } from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 
 import PlayScreen from '@/app/index';
 import LibraryScreen from '@/app/library';
+import PrivacyPolicyScreen from '@/app/privacy';
 import { bonusBooks, demoPuzzle, demoRoundDetails } from '@/test-fixtures/demo-puzzle';
 import type { ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import { queryClient } from '@/lib/query-client';
@@ -43,11 +45,21 @@ jest.mock('@/lib/local-storage', () => {
   };
 });
 
+jest.mock('expo-router', () => ({
+  Link: ({ children }: { children: React.ReactNode }) => children,
+  useRouter: () => ({
+    canGoBack: () => false,
+    back: () => undefined,
+    replace: () => undefined,
+  }),
+}));
+
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => null,
   initializeAnonymousSession: async () => undefined,
   syncOfflineMutation: async () => undefined,
   fetchDailyScores: async () => [],
+  deleteDailyScore: async () => undefined,
   fetchUserLibrary: async () => [],
   fetchTmdbProviders: async () => ({
     region: 'DE',
@@ -64,6 +76,7 @@ jest.mock('@/lib/supabase', () => ({
       genre: 'Science fiction',
       coverTheme: 'scifi_teal',
       numberOfPages: 496,
+      publicationYear: 2021,
       subjects: ['Science fiction', 'Space'],
       source: 'openlibrary_manual',
     },
@@ -110,16 +123,26 @@ describe('tab screens', () => {
   it('renders the Play screen', async () => {
     const { getByText } = await renderScreen(<PlayScreen />);
     expect(getByText(/ADAPTLE/)).toBeTruthy();
-    expect(getByText('Which characters belong to the screen adaptation?')).toBeTruthy();
+    expect(getByText('Which actors star in the screen adaptation?')).toBeTruthy();
+  });
+
+  it('shows the correct characters after a wrong answer', async () => {
+    const screen = await renderScreen(<PlayScreen />);
+
+    await fireEvent.press(screen.getByLabelText('Answer B: Timothée Chalamet & Rebecca Ferguson'));
+
+    expect(screen.getByText('× Not quite · +0 pts')).toBeTruthy();
+    expect(screen.getByText('Characters: Rick Deckard & Rachael')).toBeTruthy();
+    expect(screen.queryByText(/Matching cast:/)).toBeNull();
   });
 
   it('unlocks hints and progresses the full Play flow', async () => {
     const screen = await renderScreen(<PlayScreen />);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Unlock · -1 pt' }));
-    expect(screen.getByText('Dystopian 2019 Los Angeles')).toBeTruthy();
+    expect(screen.getByText('B _ _ _ _ R _ _ _ _ _')).toBeTruthy();
 
-    await fireEvent.press(screen.getByLabelText('Answer A: Rick Deckard & Rachael'));
+    await fireEvent.press(screen.getByLabelText('Answer A: Harrison Ford & Sean Young'));
     expect(screen.getByText('✓ Correct! · +2 pts')).toBeTruthy();
     expect(screen.getByText('Dir. Ridley Scott')).toBeTruthy();
     expect(await screen.findByText('Stream: Prime Video, Apple TV')).toBeTruthy();
@@ -171,6 +194,32 @@ describe('tab screens', () => {
     expect(screen.queryByLabelText('Search book catalog')).toBeNull();
     expect(screen.getByText('2 books saved · 1 screen adaptation')).toBeTruthy();
     expect(screen.getByText('Project Hail Mary')).toBeTruthy();
+  });
+
+  it('removes a saved book after confirmation', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find((button) => button.text === 'Remove')?.onPress?.();
+    });
+    const screen = await renderScreen(<LibraryScreen />);
+
+    await fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Change status for Do Androids Dream of Electric Sheep?',
+      })
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove' }));
+
+    expect(alert).toHaveBeenCalled();
+    expect(screen.queryByText('Do Androids Dream of Electric Sheep?')).toBeNull();
+    alert.mockRestore();
+  });
+
+  it('shows the public privacy policy and deletion contact', async () => {
+    const screen = await render(<PrivacyPolicyScreen />, { wrapper: AppDataProvider });
+
+    expect(screen.getByText('Privacy Policy')).toBeTruthy();
+    expect(screen.getAllByText(/provenri@gmail\.com/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Request data deletion' })).toBeTruthy();
   });
 });
 

@@ -12,6 +12,7 @@ export interface BookCandidate {
   title: string;
   author: string;
   numberOfPages: number | null;
+  publicationYear: number | null;
   subjects: string[];
   genre: string | null;
   coverTheme: CoverTheme;
@@ -29,6 +30,7 @@ export interface OpenLibrarySearchDoc {
   author_name?: string[];
   isbn?: string[];
   number_of_pages_median?: number;
+  first_publish_year?: number;
   subject?: string[];
 }
 
@@ -45,6 +47,7 @@ export function fromOpenLibraryDoc(doc: OpenLibrarySearchDoc): BookCandidate | n
     title,
     author,
     numberOfPages: doc.number_of_pages_median ?? null,
+    publicationYear: doc.first_publish_year ?? null,
     subjects,
     genre,
     coverTheme,
@@ -58,6 +61,7 @@ export interface GoogleBooksVolume {
     title?: string;
     authors?: string[];
     pageCount?: number;
+    publishedDate?: string;
     categories?: string[];
     industryIdentifiers?: { type?: string; identifier?: string }[];
   };
@@ -65,7 +69,7 @@ export interface GoogleBooksVolume {
 
 export function fromGoogleBooksVolume(
   volume: GoogleBooksVolume,
-  requestedIsbn13: string
+  requestedIsbn13: string,
 ): BookCandidate | null {
   const info = volume.volumeInfo;
   const title = info?.title?.trim();
@@ -82,9 +86,17 @@ export function fromGoogleBooksVolume(
     title,
     author,
     numberOfPages: info?.pageCount ?? null,
+    publicationYear: parsePublicationYear(info?.publishedDate),
     subjects,
     genre,
     coverTheme,
     source: 'googlebooks_manual',
   };
+}
+
+export function parsePublicationYear(value: string | undefined): number | null {
+  const match = value?.match(/\b(\d{4})\b/);
+  if (!match) return null;
+  const year = Number.parseInt(match[1]!, 10);
+  return year >= 1 && year <= 9999 ? year : null;
 }

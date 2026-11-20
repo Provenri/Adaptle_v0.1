@@ -20,6 +20,7 @@ const books: CatalogRow[] = Array.from({ length: 5 }, (_, index) => ({
   isbn13: `978000000000${index}`,
   book_title: `Book ${index + 1}`,
   author: `Author ${index + 1}`,
+  publication_year: 1980 + index,
   genre: 'Science fiction',
   cover_theme: 'scifi_teal',
   tmdb_id: 100 + index,
@@ -53,6 +54,9 @@ describe('production daily puzzle mapping', () => {
     expect(first.id).toBe('1');
     expect(first.puzzle.rounds).toHaveLength(5);
     expect(first.puzzle.rounds[0].choices).toEqual(second.puzzle.rounds[0].choices);
+    expect(first.puzzle.rounds[0].choices.map((choice) => choice.label)).toContain(
+      'Actor 1 & Actor B1'
+    );
     expect(first.puzzle.bonus.choices.map((choice) => choice.id).sort()).toEqual([
       'connection',
       'decoy-1',

@@ -114,6 +114,7 @@ describe('row mappers', () => {
       isbn13: isbn(1),
       movie_title: 'TMDB Movie',
       director: 'TMDB Director',
+      publication_year: 1980,
       release_year: 1991,
       lead_characters: ['A', 'B'],
       setting_hint: 'setting',
