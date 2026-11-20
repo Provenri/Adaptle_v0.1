@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { mmkvSupabaseStorage } from './local-storage';
 import type { OfflineMutation } from './offline-queue';
 import type { DailyScore } from './scores';
+import type { BookCandidate, LibraryBook } from '@/data/library-data';
 
 let client: SupabaseClient | null = null;
 
@@ -121,6 +122,128 @@ export async function fetchDailyScores(): Promise<DailyScore[]> {
       : [],
     completedAt: row.completed_at,
   }));
+}
+
+export async function fetchUserLibrary(): Promise<LibraryBook[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  await initializeAnonymousSession();
+
+  const { data, error } = await supabase
+    .from('user_library')
+    .select(
+      'isbn13,status,catalog_items(isbn13,book_title,author,genre,cover_theme,tmdb_id,movie_title,release_year,movie_poster_path)'
+    )
+    .order('saved_at', { ascending: false });
+  if (error) throw error;
+
+  const books: LibraryBook[] = [];
+  for (const row of data ?? []) {
+    const catalog = Array.isArray(row.catalog_items) ? row.catalog_items[0] : row.catalog_items;
+    if (!catalog) continue;
+    books.push({
+      isbn13: row.isbn13,
+      title: catalog.book_title,
+      author: catalog.author,
+      genre: catalog.genre,
+      coverTheme: catalog.cover_theme,
+      status: row.status,
+      movieTitle: catalog.movie_title ?? undefined,
+      movieYear: catalog.release_year ?? undefined,
+      tmdbId: catalog.tmdb_id ?? undefined,
+      moviePosterPath: catalog.movie_poster_path ?? null,
+    });
+  }
+
+  return books;
+}
+
+export type TmdbProvider = {
+  name: string;
+  logoPath: string | null;
+};
+
+export type TmdbProviders = {
+  region: string;
+  link: string | null;
+  flatrate: TmdbProvider[];
+  rent: TmdbProvider[];
+  buy: TmdbProvider[];
+};
+
+export async function fetchTmdbProviders(tmdbId: number, region = 'DE'): Promise<TmdbProviders> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error('Supabase is not configured');
+  await initializeAnonymousSession();
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (!session) throw new Error('A signed-in session is required to load streaming providers');
+
+  const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  if (!baseUrl) throw new Error('Supabase URL is not configured');
+  const response = await fetch(
+    `${baseUrl}/functions/v1/tmdb-proxy?action=providers&tmdb_id=${tmdbId}&region=${region}`,
+    {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+      },
+    }
+  );
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      typeof payload.error === 'string' ? payload.error : 'Streaming provider lookup failed'
+    );
+  }
+  return payload as TmdbProviders;
+}
+
+export async function searchBookCatalog(query: string): Promise<BookCandidate[]> {
+  const normalized = query.trim();
+  if (normalized.length < 2) return [];
+
+  const isbn13 = normalized.replace(/[^0-9]/g, '');
+  const action = /^\d{13}$/.test(isbn13) ? 'isbn' : 'search';
+  const parameter =
+    action === 'isbn'
+      ? `isbn=${encodeURIComponent(isbn13)}`
+      : `q=${encodeURIComponent(normalized)}`;
+  const payload = await invokeBookSearch(`?action=${action}&${parameter}`);
+  return payload.items;
+}
+
+async function invokeBookSearch(queryString: string): Promise<{ items: BookCandidate[] }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error('Supabase is not configured');
+  await initializeAnonymousSession();
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (!session) throw new Error('A signed-in session is required to search books');
+
+  const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  if (!baseUrl) throw new Error('Supabase URL is not configured');
+  const response = await fetch(`${baseUrl}/functions/v1/booksearch-proxy${queryString}`, {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    },
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      typeof payload.error === 'string' ? payload.error : 'Book catalog search failed'
+    );
+  }
+  return payload as { items: BookCandidate[] };
 }
 
 function requiredString(value: unknown, field: string): string {

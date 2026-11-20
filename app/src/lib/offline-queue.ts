@@ -28,7 +28,9 @@ export function enqueueOfflineMutation(
     id: mutation.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     createdAt: mutation.createdAt ?? Date.now(),
   } as OfflineMutation;
-  localStorage.set(QUEUE_KEY, [...getOfflineMutations(), queued]);
+  const existing = getOfflineMutations();
+  const queue = existing.filter((mutation) => mutationKey(mutation) !== mutationKey(queued));
+  localStorage.set(QUEUE_KEY, [...queue, queued]);
   return queued;
 }
 
@@ -54,4 +56,11 @@ export async function flushOfflineMutations(handler: OfflineMutationHandler): Pr
 
 export function clearOfflineMutations(): void {
   localStorage.remove(QUEUE_KEY);
+}
+
+function mutationKey(mutation: OfflineMutation): string {
+  if (mutation.type === 'daily-score-upsert') {
+    return `score:${String(mutation.payload.puzzleDate ?? '')}`;
+  }
+  return `library:${String(mutation.payload.isbn13 ?? mutation.id)}`;
 }

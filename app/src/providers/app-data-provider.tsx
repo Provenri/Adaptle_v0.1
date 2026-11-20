@@ -2,30 +2,31 @@ import { QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { type BookCandidate, type LibraryBook, type ShelfStatus } from '@/data/library-data';
+import { fetchDailyPuzzle, type ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import {
-  demoLibrary,
-  type BookCandidate,
-  type LibraryBook,
-  type ShelfStatus,
-} from '@/data/library-data';
-import { demoPuzzle } from '@/data/demo-puzzle';
-import { enqueueOfflineMutation, flushOfflineMutations } from '@/lib/offline-queue';
+  enqueueOfflineMutation,
+  flushOfflineMutations,
+  getOfflineMutations,
+} from '@/lib/offline-queue';
 import { persistQueryCache, queryClient } from '@/lib/query-client';
 import { localStorage } from '@/lib/local-storage';
 import {
   fetchDailyScores,
+  fetchUserLibrary,
   getSupabaseClient,
   initializeAnonymousSession,
   syncOfflineMutation,
 } from '@/lib/supabase';
 import { calculateStreak, mergeDailyScores, type DailyScore } from '@/lib/scores';
-import type { DailyPuzzle } from '@/lib/game-engine';
 
 const LIBRARY_KEY = 'library-v1';
 const SCORES_KEY = 'daily-scores-v1';
 
 type LibraryContextValue = {
   books: LibraryBook[];
+  libraryError: string | null;
+  isLibraryLoading: boolean;
   scores: DailyScore[];
   currentStreak: number;
   saveBook: (
@@ -48,8 +49,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 function LibraryProvider({ children }: { children: ReactNode }) {
   const [books, setBooks] = useState<LibraryBook[]>(
-    () => localStorage.get<LibraryBook[]>(LIBRARY_KEY) ?? [...demoLibrary]
+    () => localStorage.get<LibraryBook[]>(LIBRARY_KEY) ?? []
   );
+  const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [isLibraryLoading, setIsLibraryLoading] = useState(process.env.NODE_ENV !== 'test');
   const [scores, setScores] = useState<DailyScore[]>(
     () => localStorage.get<DailyScore[]>(SCORES_KEY) ?? []
   );
@@ -69,7 +72,7 @@ function LibraryProvider({ children }: { children: ReactNode }) {
     });
     void queryClient.prefetchQuery({
       queryKey: ['daily-puzzle', 'today'],
-      queryFn: async () => demoPuzzle,
+      queryFn: fetchDailyPuzzle,
     });
 
     return unsubscribe;
@@ -85,11 +88,18 @@ function LibraryProvider({ children }: { children: ReactNode }) {
       try {
         await initializeAnonymousSession();
         await flushOfflineMutations(syncOfflineMutation);
-        const remoteScores = await fetchDailyScores();
+        const [remoteScores, remoteLibrary] = await Promise.all([
+          fetchDailyScores(),
+          fetchUserLibrary(),
+        ]);
         setScores((localScores) => mergeDailyScores(localScores, remoteScores));
+        setBooks(overlayPendingLibraryMutations(remoteLibrary));
+        setLibraryError(null);
       } catch (error) {
+        setLibraryError(error instanceof Error ? error.message : 'Unable to sync your library.');
         console.error('Unable to sync Adaptle local data; queued changes remain pending.', error);
       } finally {
+        setIsLibraryLoading(false);
         syncing = false;
       }
     };
@@ -103,6 +113,8 @@ function LibraryProvider({ children }: { children: ReactNode }) {
   const value = useMemo<LibraryContextValue>(
     () => ({
       books,
+      libraryError,
+      isLibraryLoading,
       scores,
       currentStreak: calculateStreak(scores),
       saveBook: (candidate, status = 'TO_BE_READ') => {
@@ -147,10 +159,48 @@ function LibraryProvider({ children }: { children: ReactNode }) {
         setSyncVersion((version) => version + 1);
       },
     }),
-    [books, scores]
+    [books, isLibraryLoading, libraryError, scores]
   );
 
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;
+}
+
+function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
+  const result = [...remote];
+  for (const mutation of getOfflineMutations()) {
+    if (mutation.type !== 'library-upsert') continue;
+    const payload = mutation.payload;
+    const isbn13 = typeof payload.isbn13 === 'string' ? payload.isbn13 : null;
+    const status = payload.status;
+    if (!isbn13 || (status !== 'TO_BE_READ' && status !== 'FINISHED' && status !== 'SNOOZE')) {
+      continue;
+    }
+    const index = result.findIndex((book) => book.isbn13 === isbn13);
+    if (index >= 0) {
+      result[index] = { ...result[index], status };
+      continue;
+    }
+    if (
+      typeof payload.title === 'string' &&
+      typeof payload.author === 'string' &&
+      typeof payload.coverTheme === 'string'
+    ) {
+      result.unshift({
+        isbn13,
+        title: payload.title,
+        author: payload.author,
+        genre: typeof payload.genre === 'string' ? payload.genre : null,
+        coverTheme: payload.coverTheme as LibraryBook['coverTheme'],
+        status,
+        tmdbId: typeof payload.tmdbId === 'number' ? payload.tmdbId : undefined,
+        moviePosterPath:
+          typeof payload.moviePosterPath === 'string' ? payload.moviePosterPath : null,
+        movieTitle: typeof payload.movieTitle === 'string' ? payload.movieTitle : undefined,
+        movieYear: typeof payload.releaseYear === 'number' ? payload.releaseYear : undefined,
+      });
+    }
+  }
+  return result;
 }
 
 export function useLibrary(): LibraryContextValue {
@@ -159,13 +209,10 @@ export function useLibrary(): LibraryContextValue {
   return context;
 }
 
-export function useDailyPuzzle(): DailyPuzzle {
-  const { data } = useQuery({
+export function useDailyPuzzle() {
+  return useQuery<ProductionDailyPuzzle>({
     queryKey: ['daily-puzzle', 'today'],
-    queryFn: async () => demoPuzzle,
-    initialData: () => {
-      return queryClient.getQueryData<DailyPuzzle>(['daily-puzzle', 'today']) ?? demoPuzzle;
-    },
+    queryFn: fetchDailyPuzzle,
+    staleTime: 10 * 60 * 1000,
   });
-  return data;
 }

@@ -3,22 +3,106 @@ import { fireEvent, render } from '@testing-library/react-native';
 
 import PlayScreen from '@/app/index';
 import LibraryScreen from '@/app/library';
+import { bonusBooks, demoPuzzle, demoRoundDetails } from '@/test-fixtures/demo-puzzle';
+import type { ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import { queryClient } from '@/lib/query-client';
 import { createScoreShareText } from '@/lib/score-sharing';
 import { AppDataProvider } from '@/providers/app-data-provider';
 
-jest.mock('react-native-mmkv', () => {
-  const values = new Map<string, string>();
+jest.mock('@/lib/local-storage', () => {
+  const values = new Map<string, unknown>([
+    [
+      'library-v1',
+      [
+        {
+          isbn13: '9780345404473',
+          title: 'Do Androids Dream of Electric Sheep?',
+          author: 'Philip K. Dick',
+          genre: 'Science fiction',
+          coverTheme: 'scifi_teal',
+          status: 'TO_BE_READ',
+          movieTitle: 'Blade Runner',
+          movieYear: 1982,
+          tmdbId: 78,
+          moviePosterPath: '/63N9uy8nd9j7Eog2axPQ8lbr3Wj.jpg',
+        },
+      ],
+    ],
+  ]);
   return {
-    createMMKV: () => ({
-      getString: (key: string) => values.get(key),
-      set: (key: string, value: string) => values.set(key, value),
+    localStorage: {
+      get: (key: string) => values.get(key) ?? null,
+      set: (key: string, value: unknown) => values.set(key, value),
       remove: (key: string) => values.delete(key),
-    }),
+    },
+    mmkvSupabaseStorage: {
+      getItem: async () => null,
+      setItem: async () => undefined,
+      removeItem: async () => undefined,
+    },
   };
 });
 
+jest.mock('@/lib/supabase', () => ({
+  getSupabaseClient: () => null,
+  initializeAnonymousSession: async () => undefined,
+  syncOfflineMutation: async () => undefined,
+  fetchDailyScores: async () => [],
+  fetchUserLibrary: async () => [],
+  fetchTmdbProviders: async () => ({
+    region: 'DE',
+    link: null,
+    flatrate: [{ name: 'Prime Video', logoPath: null }],
+    rent: [{ name: 'Apple TV', logoPath: null }],
+    buy: [],
+  }),
+  searchBookCatalog: async () => [
+    {
+      isbn13: '9780385547345',
+      title: 'Project Hail Mary',
+      author: 'Andy Weir',
+      genre: 'Science fiction',
+      coverTheme: 'scifi_teal',
+      numberOfPages: 496,
+      subjects: ['Science fiction', 'Space'],
+      source: 'openlibrary_manual',
+    },
+  ],
+}));
+
 async function renderScreen(element: ReactElement) {
+  const roundDetails = Object.fromEntries(
+    Object.entries(demoRoundDetails).map(([id, details]) => [id, { ...details, tmdbId: 78 }])
+  );
+  const firstBonus = bonusBooks[0];
+  const secondBonus = bonusBooks[1];
+  queryClient.setQueryData<ProductionDailyPuzzle>(['daily-puzzle', 'today'], {
+    id: demoPuzzle.id,
+    puzzleDate: '2026-11-20',
+    puzzle: demoPuzzle,
+    roundDetails,
+    bonusItems: [
+      {
+        kind: 'book',
+        title: firstBonus.title,
+        author: firstBonus.author,
+        genre: firstBonus.genre,
+        coverTheme: firstBonus.coverTheme,
+        movieTitle: firstBonus.movieTitle,
+        moviePosterPath: firstBonus.moviePosterPath,
+      },
+      {
+        kind: 'book',
+        title: secondBonus.title,
+        author: secondBonus.author,
+        genre: secondBonus.genre,
+        coverTheme: secondBonus.coverTheme,
+        movieTitle: secondBonus.movieTitle,
+        moviePosterPath: secondBonus.moviePosterPath,
+      },
+    ],
+    pairMode: 'BOOK_PAIR',
+  });
   return render(element, { wrapper: AppDataProvider });
 }
 
@@ -38,7 +122,7 @@ describe('tab screens', () => {
     await fireEvent.press(screen.getByLabelText('Answer A: Rick Deckard & Rachael'));
     expect(screen.getByText('✓ Correct! · +2 pts')).toBeTruthy();
     expect(screen.getByText('Dir. Ridley Scott')).toBeTruthy();
-    expect(screen.getByText('Stream: Prime Video, Apple TV')).toBeTruthy();
+    expect(await screen.findByText('Stream: Prime Video, Apple TV')).toBeTruthy();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Finished' }));
     expect(screen.getByRole('button', { name: '✓ Finished' }).props.accessibilityState).toEqual({
@@ -61,28 +145,31 @@ describe('tab screens', () => {
 
   it('renders the My Library screen', async () => {
     const screen = await renderScreen(<LibraryScreen />);
-    expect(screen.getByText('3 books saved · 2 screen adaptations')).toBeTruthy();
-    expect(screen.getByText('Atomic Habits')).toBeTruthy();
+    expect(screen.getByText('1 book saved · 1 screen adaptation')).toBeTruthy();
+    expect(screen.getByText('Do Androids Dream of Electric Sheep?')).toBeTruthy();
 
-    await fireEvent.changeText(screen.getByLabelText('Search my shelf'), 'Dune');
-    expect(screen.getByText('Dune')).toBeTruthy();
-    expect(screen.queryByText('Atomic Habits')).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText('Search my shelf'), 'missing');
+    expect(screen.getByText('No matching books')).toBeTruthy();
 
     await fireEvent.changeText(screen.getByLabelText('Search my shelf'), '');
-    await fireEvent.press(screen.getByRole('button', { name: 'All 3' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Change status for Dune' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'All 1' }));
+    await fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Change status for Do Androids Dream of Electric Sheep?',
+      })
+    );
     await fireEvent.press(screen.getByRole('button', { name: 'Snooze' }));
-    expect(screen.getByText('Snooze 2')).toBeTruthy();
+    expect(screen.getByText('Snooze 1')).toBeTruthy();
   });
 
   it('adds a book from search results', async () => {
     const screen = await renderScreen(<LibraryScreen />);
     await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
     await fireEvent.changeText(screen.getByLabelText('Search book catalog'), 'Project Hail Mary');
-    await fireEvent.press(screen.getByText('Project Hail Mary'));
+    await fireEvent.press(await screen.findByText('Project Hail Mary'));
 
     expect(screen.queryByLabelText('Search book catalog')).toBeNull();
-    expect(screen.getByText('4 books saved · 2 screen adaptations')).toBeTruthy();
+    expect(screen.getByText('2 books saved · 1 screen adaptation')).toBeTruthy();
     expect(screen.getByText('Project Hail Mary')).toBeTruthy();
   });
 });

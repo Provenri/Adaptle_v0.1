@@ -4,6 +4,7 @@ import {
   useCameraPermissions,
   type PermissionResponse,
 } from 'expo-camera';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,19 +13,20 @@ import { TypographicCover } from '@/components/typographic-cover';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
 import {
-  demoCandidates,
   SHELF_LABELS,
   type BookCandidate,
   type LibraryBook,
   type ShelfStatus,
 } from '@/data/library-data';
+import { searchBookCatalog } from '@/lib/supabase';
 import { useLibrary } from '@/providers/app-data-provider';
 
 type ShelfFilter = ShelfStatus | 'ALL';
 
 export default function LibraryScreen() {
-  const { books, saveBook, updateStatus } = useLibrary();
+  const { books, isLibraryLoading, libraryError, saveBook, updateStatus } = useLibrary();
   const [filter, setFilter] = useState<ShelfFilter>('ALL');
   const [query, setQuery] = useState('');
   const [addBookOpen, setAddBookOpen] = useState(false);
@@ -66,8 +68,11 @@ export default function LibraryScreen() {
               </ThemedText>
               <ThemedText type="subtitle">My Library</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {books.length} books saved · {books.filter((book) => book.movieTitle).length} screen
-                adaptations
+                {books.length} {books.length === 1 ? 'book' : 'books'} saved ·{' '}
+                {books.filter((book) => book.movieTitle).length}{' '}
+                {books.filter((book) => book.movieTitle).length === 1
+                  ? 'screen adaptation'
+                  : 'screen adaptations'}
               </ThemedText>
             </View>
             <Pressable
@@ -107,7 +112,17 @@ export default function LibraryScreen() {
             value={query}
           />
 
-          {visibleBooks.length > 0 ? (
+          {isLibraryLoading && books.length === 0 ? (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+              Loading your shelf…
+            </ThemedText>
+          ) : libraryError && books.length === 0 ? (
+            <View style={styles.emptyState}>
+              <ThemedText type="small" accessibilityRole="alert" style={styles.errorText}>
+                {libraryError}
+              </ThemedText>
+            </View>
+          ) : visibleBooks.length > 0 ? (
             <View style={styles.bookList}>
               {visibleBooks.map((book) => (
                 <LibraryBookCard
@@ -166,6 +181,8 @@ function LibraryBookCard({
   onStatusChange: (status: ShelfStatus) => void;
 }) {
   const [editingStatus, setEditingStatus] = useState(false);
+  const providers = useTmdbProviders(book.tmdbId);
+  const providerList = providerNames(providers.data);
 
   return (
     <View style={styles.bookCard}>
@@ -190,7 +207,12 @@ function LibraryBookCard({
                 🎬 {book.movieTitle} ({book.movieYear})
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                📺 {book.streamingProviders?.join(', ')}
+                📺{' '}
+                {providerList.length > 0
+                  ? providerList.join(', ')
+                  : providers.isPending
+                    ? 'Loading providers…'
+                    : 'Unavailable offline'}
               </ThemedText>
             </>
           ) : (
@@ -267,31 +289,37 @@ function AddBookModal({
 }) {
   const [query, setQuery] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
-  const normalizedQuery = query.trim().toLowerCase();
-  const results = normalizedQuery
-    ? demoCandidates.filter((candidate) =>
-        `${candidate.title} ${candidate.author} ${candidate.isbn13}`
-          .toLowerCase()
-          .includes(normalizedQuery)
-      )
-    : demoCandidates.slice(0, 2);
+  const searchQuery = useQuery({
+    queryKey: ['book-search', query.trim()],
+    queryFn: () => searchBookCatalog(query.trim()),
+    enabled: visible && query.trim().length >= 2,
+    staleTime: 5 * 60 * 1000,
+  });
+  const results = searchQuery.data ?? [];
 
   const startScanning = async () => {
+    setScanError(null);
     const response: PermissionResponse | undefined = permission?.granted
       ? permission
       : await requestPermission();
     if (response?.granted) setScanning(true);
   };
 
-  const handleBarcode = ({ data }: BarcodeScanningResult) => {
-    const candidate = demoCandidates.find((item) => item.isbn13 === data.replace(/[^0-9]/g, ''));
-    if (candidate) {
-      setScanning(false);
-      onAdd(candidate);
-    } else {
-      setQuery(data);
-      setScanning(false);
+  const handleBarcode = async ({ data }: BarcodeScanningResult) => {
+    setScanning(false);
+    const isbn13 = data.replace(/[^0-9]/g, '');
+    setQuery(isbn13);
+    try {
+      const candidates = await searchBookCatalog(isbn13);
+      if (candidates[0]) {
+        onAdd(candidates[0]);
+      } else {
+        setScanError('No book was found for that ISBN.');
+      }
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : 'ISBN lookup failed.');
     }
   };
 
@@ -359,7 +387,24 @@ function AddBookModal({
                   Camera permission is required to scan. You can still search above.
                 </ThemedText>
               )}
+              {scanError ? (
+                <ThemedText accessibilityRole="alert" type="small" style={styles.errorText}>
+                  {scanError}
+                </ThemedText>
+              ) : null}
               <ScrollView contentContainerStyle={styles.results}>
+                {searchQuery.isFetching ? (
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+                    Searching the catalog…
+                  </ThemedText>
+                ) : null}
+                {searchQuery.isError ? (
+                  <ThemedText accessibilityRole="alert" type="small" style={styles.errorText}>
+                    {searchQuery.error instanceof Error
+                      ? searchQuery.error.message
+                      : 'Book search failed.'}
+                  </ThemedText>
+                ) : null}
                 {results.map((candidate) => (
                   <Pressable
                     accessibilityRole="button"
@@ -384,9 +429,12 @@ function AddBookModal({
                     </ThemedText>
                   </Pressable>
                 ))}
-                {results.length === 0 ? (
+                {!searchQuery.isFetching &&
+                !searchQuery.isError &&
+                query.trim().length >= 2 &&
+                results.length === 0 ? (
                   <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-                    No local demo matches. The production flow will query the book-search API.
+                    No books found. Check the title, author, or ISBN.
                   </ThemedText>
                 ) : null}
               </ScrollView>
@@ -522,6 +570,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   permissionText: { color: '#A84732' },
+  errorText: { color: '#A84732', textAlign: 'center' },
   lightText: { color: '#FFFFFF' },
   darkText: { color: '#173E32' },
   pressed: { opacity: 0.65 },

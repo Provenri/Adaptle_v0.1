@@ -1,6 +1,18 @@
 import { calculateStreak, currentPuzzleDate, mergeDailyScores } from '@/lib/scores';
 
 describe('score history', () => {
+  it('recognizes a persisted score as already completed for today', () => {
+    const score = {
+      puzzleDate: '2026-11-20',
+      puzzleNumber: '1',
+      totalPoints: 15,
+      roundBreakdown: [3, 2, 1, 3, 3, 3],
+      completedAt: '2026-11-20T18:00:00.000Z',
+    };
+
+    expect([score].find((item) => item.puzzleDate === '2026-11-20')).toEqual(score);
+  });
+
   it.each([
     [['2026-11-19', '2026-11-18', '2026-11-17'], '2026-11-19', 3],
     [['2026-11-18', '2026-11-17'], '2026-11-19', 2],

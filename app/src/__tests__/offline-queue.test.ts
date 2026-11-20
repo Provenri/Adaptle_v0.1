@@ -61,4 +61,32 @@ describe('offline mutation queue', () => {
     clearOfflineMutations();
     expect(getOfflineMutations()).toEqual([]);
   });
+
+  it('coalesces repeated writes to the same book and puzzle date', () => {
+    enqueueOfflineMutation({
+      id: 'library-old',
+      type: 'library-upsert',
+      payload: { isbn13: '9780000000001', status: 'TO_BE_READ' },
+    });
+    enqueueOfflineMutation({
+      id: 'library-new',
+      type: 'library-upsert',
+      payload: { isbn13: '9780000000001', status: 'FINISHED' },
+    });
+    enqueueOfflineMutation({
+      id: 'score-old',
+      type: 'daily-score-upsert',
+      payload: { puzzleDate: '2026-11-20', totalPoints: 10 },
+    });
+    enqueueOfflineMutation({
+      id: 'score-new',
+      type: 'daily-score-upsert',
+      payload: { puzzleDate: '2026-11-20', totalPoints: 18 },
+    });
+
+    expect(getOfflineMutations().map((mutation) => mutation.id)).toEqual([
+      'library-new',
+      'score-new',
+    ]);
+  });
 });

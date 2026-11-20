@@ -8,7 +8,8 @@ import { TypographicCover } from '@/components/typographic-cover';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { bonusBooks, demoRoundDetails } from '@/data/demo-puzzle';
+import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
+import type { BonusItem, DailyRoundDetails, ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import {
   createGameState,
   gameReducer,
@@ -19,27 +20,80 @@ import {
   type DailyPuzzle,
 } from '@/lib/game-engine';
 import { createScoreShareText, shareScoreImage } from '@/lib/score-sharing';
-import { createDailyScore } from '@/lib/scores';
+import { createDailyScore, currentPuzzleDate } from '@/lib/scores';
 import { useDailyPuzzle, useLibrary } from '@/providers/app-data-provider';
 
 type ShelfStatus = 'TO_BE_READ' | 'FINISHED' | 'SNOOZE';
 
 export default function PlayScreen() {
-  const dailyPuzzle = useDailyPuzzle();
-  const [state, dispatch] = useReducer(gameReducer, dailyPuzzle, createGameState);
+  const puzzleQuery = useDailyPuzzle();
+
+  if (puzzleQuery.data) {
+    return <DailyGame dailyPuzzle={puzzleQuery.data} />;
+  }
+  if (puzzleQuery.isPending) {
+    return <PuzzleStatus title="Preparing today's puzzle" description="Loading today's books…" />;
+  }
+  const description =
+    puzzleQuery.error instanceof Error
+      ? puzzleQuery.error.message
+      : "Today's puzzle could not be loaded.";
+
+  return (
+    <PuzzleStatus
+      title="Today's puzzle is not ready"
+      description={description}
+      onRetry={() => void puzzleQuery.refetch()}
+    />
+  );
+}
+
+function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
+  const enginePuzzle = dailyPuzzle.puzzle;
+  const [state, dispatch] = useReducer(gameReducer, enginePuzzle, createGameState);
   const [savedThisSession, setSavedThisSession] = useState<Record<string, true>>({});
-  const { books, currentStreak, saveScore, saveBook } = useLibrary();
-  const round = dailyPuzzle.rounds[state.roundIndex];
-  const details = demoRoundDetails[round.id];
+  const { books, currentStreak, saveScore, saveBook, scores } = useLibrary();
+  const round = enginePuzzle.rounds[state.roundIndex];
+  const details = dailyPuzzle.roundDetails[round.id];
   const lastResult = state.results.at(-1);
   const completedScoreSaved = useRef(false);
 
   useEffect(() => {
     if (state.phase === 'complete' && !completedScoreSaved.current) {
       completedScoreSaved.current = true;
-      saveScore(createDailyScore(dailyPuzzle, state));
+      saveScore(createDailyScore(enginePuzzle, state));
     }
-  }, [dailyPuzzle, saveScore, state]);
+  }, [enginePuzzle, saveScore, state]);
+
+  const completedScore = scores.find((score) => score.puzzleDate === currentPuzzleDate());
+  if (completedScore) {
+    return (
+      <ThemedView style={styles.root}>
+        <SafeAreaView style={styles.safeArea}>
+          <ScrollView contentContainerStyle={styles.content}>
+            <View style={styles.headingRow}>
+              <View>
+                <ThemedText type="smallBold" style={styles.eyebrow}>
+                  ADAPTLE #{completedScore.puzzleNumber}
+                </ThemedText>
+                <ThemedText type="subtitle">Daily complete</ThemedText>
+              </View>
+              <ThemedText type="smallBold" style={styles.streak}>
+                🔥 {currentStreak}
+              </ThemedText>
+            </View>
+            <SummaryView
+              total={completedScore.totalPoints}
+              breakdown={completedScore.roundBreakdown}
+              puzzleNumber={completedScore.puzzleNumber}
+              savedCount={Object.keys(savedThisSession).length}
+              streak={currentStreak}
+            />
+          </ScrollView>
+        </SafeAreaView>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.root}>
@@ -84,7 +138,7 @@ export default function PlayScreen() {
               points={lastResult?.points ?? 0}
               onContinue={() => dispatch({ type: 'continue' })}
               nextLabel={
-                state.roundIndex === dailyPuzzle.rounds.length - 1
+                state.roundIndex === enginePuzzle.rounds.length - 1
                   ? 'Start bonus round'
                   : `Next round (${state.roundIndex + 2} of 5)`
               }
@@ -98,7 +152,8 @@ export default function PlayScreen() {
 
           {state.phase === 'bonus' ? (
             <BonusView
-              choices={dailyPuzzle.bonus.choices}
+              choices={enginePuzzle.bonus.choices}
+              items={dailyPuzzle.bonusItems}
               onAnswer={(choiceId) => dispatch({ type: 'submit-bonus', choiceId })}
             />
           ) : null}
@@ -108,7 +163,11 @@ export default function PlayScreen() {
               correct={lastResult?.correct ?? false}
               points={lastResult?.points ?? 0}
               title={lastResult?.correct ? 'Common thread found!' : 'Not quite this time'}
-              description="Both Dune and The Martian place their central struggles on hostile other worlds."
+              description={`The shared connection was: ${
+                enginePuzzle.bonus.choices.find(
+                  (choice) => choice.id === enginePuzzle.bonus.correctChoiceId
+                )?.label ?? 'the common thread'
+              }.`}
               actionLabel="See daily score"
               onAction={() => dispatch({ type: 'continue' })}
             />
@@ -129,8 +188,35 @@ export default function PlayScreen() {
   );
 }
 
+function PuzzleStatus({
+  title,
+  description,
+  onRetry,
+}: {
+  title: string;
+  description: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <ThemedView style={styles.root}>
+      <SafeAreaView style={styles.statusSafeArea}>
+        <View style={styles.statusPanel}>
+          <ThemedText style={styles.statusIcon}>🎬 📖</ThemedText>
+          <ThemedText type="subtitle" style={styles.centered}>
+            {title}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+            {description}
+          </ThemedText>
+          {onRetry ? <PrimaryButton label="Try again" onPress={onRetry} /> : null}
+        </View>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
 type QuestionViewProps = {
-  details: (typeof demoRoundDetails)[string];
+  details: DailyRoundDetails;
   hintsUsed: number;
   round: DailyPuzzle['rounds'][number]['choices'];
   onHint: () => void;
@@ -273,7 +359,7 @@ function RevealView({
   onSave,
 }: {
   correct: boolean;
-  details: (typeof demoRoundDetails)[string];
+  details: DailyRoundDetails;
   hintsUsed: number;
   points: number;
   nextLabel: string;
@@ -281,6 +367,9 @@ function RevealView({
   savedStatus?: ShelfStatus;
   onSave: (status: ShelfStatus) => void;
 }) {
+  const providers = useTmdbProviders(details.tmdbId);
+  const providerList = providerNames(providers.data);
+
   return (
     <View style={styles.stack}>
       <ResultBanner correct={correct} points={points} hintsUsed={hintsUsed} />
@@ -314,7 +403,12 @@ function RevealView({
             Cast: {details.cast}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Stream: {details.streamingProviders.join(', ')}
+            Stream:{' '}
+            {providerList.length > 0
+              ? providerList.join(', ')
+              : providers.isPending
+                ? 'Loading providers…'
+                : 'Unavailable offline'}
           </ThemedText>
         </View>
       </View>
@@ -406,9 +500,11 @@ function ShelfButton({
 
 function BonusView({
   choices,
+  items,
   onAnswer,
 }: {
   choices: DailyPuzzle['bonus']['choices'];
+  items: readonly [BonusItem, BonusItem];
   onAnswer: (choiceId: string) => void;
 }) {
   return (
@@ -417,15 +513,24 @@ function BonusView({
         BONUS ROUND · 3 PTS
       </ThemedText>
       <View style={styles.bonusBooks}>
-        {bonusBooks.map((book, index) => (
+        {items.map((book, index) => (
           <View key={book.title} style={styles.bonusBook}>
-            <TypographicCover
-              title={book.title}
-              author={book.author}
-              genre={book.genre}
-              coverTheme={book.coverTheme}
-              width="100%"
-            />
+            {book.kind === 'movie' && book.moviePosterPath ? (
+              <Image
+                accessibilityLabel={`${book.movieTitle ?? book.title} poster`}
+                contentFit="cover"
+                source={{ uri: `https://image.tmdb.org/t/p/w342${book.moviePosterPath}` }}
+                style={styles.bonusPoster}
+              />
+            ) : (
+              <TypographicCover
+                title={book.title}
+                author={book.author}
+                genre={book.genre}
+                coverTheme={book.coverTheme}
+                width="100%"
+              />
+            )}
             {index === 0 ? <ThemedText style={styles.connector}>×</ThemedText> : null}
           </View>
         ))}
@@ -582,6 +687,24 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
+  },
+  statusSafeArea: {
+    flex: 1,
+    justifyContent: 'center',
+    maxWidth: MaxContentWidth,
+    padding: Spacing.four,
+    width: '100%',
+  },
+  statusPanel: {
+    alignItems: 'center',
+    backgroundColor: '#F8F4EE',
+    borderRadius: 22,
+    gap: Spacing.three,
+    padding: Spacing.five,
+  },
+  statusIcon: {
+    fontSize: 48,
+    lineHeight: 58,
   },
   safeArea: {
     flex: 1,
@@ -831,6 +954,11 @@ const styles = StyleSheet.create({
     maxWidth: 180,
     position: 'relative',
     width: '42%',
+  },
+  bonusPoster: {
+    aspectRatio: 2 / 3,
+    borderRadius: 4,
+    width: '100%',
   },
   connector: {
     alignItems: 'center',
