@@ -10,8 +10,8 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { APP_ICON } from '@/assets';
 import { getSupabaseClient, initializeAnonymousSession } from '@/lib/supabase';
 
-const CONTACT_EMAIL = 'provenri@gmail.com';
-const EFFECTIVE_DATE = '20 November 2026';
+const CONTACT_EMAIL = 'adaptle.privacy@gmail.com';
+const EFFECTIVE_DATE = '21 November 2026';
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
@@ -67,7 +67,7 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
             <View>
               <ThemedText type="subtitle">Privacy Policy</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Adaptle · Provenri · Effective {EFFECTIVE_DATE}
+                Adaptle · Effective {EFFECTIVE_DATE}
               </ThemedText>
             </View>
           </View>
@@ -91,8 +91,8 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
             </PolicyText>
             <PolicyText>
               <PolicyStrong>Your library and game data.</PolicyStrong> We store book ISBNs and
-              factual catalog metadata, your shelf status, daily puzzle date, round breakdown,
-              score, and completion time.
+              factual catalog metadata such as publication year, your shelf status, an optional
+              Snooze return date, daily puzzle date, round breakdown, score, and completion time.
             </PolicyText>
             <PolicyText>
               <PolicyStrong>Search and ISBN data.</PolicyStrong> Book searches and scanned or typed
@@ -117,9 +117,9 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
             <PolicyText>
               We use information only to provide and secure the app: authenticate anonymous
               sessions, load daily puzzles, save and synchronize your shelf and scores, calculate
-              streaks, process book searches and ISBN lookups, retrieve factual movie information
-              and streaming availability, maintain service reliability, and respond to support or
-              privacy requests.
+              streaks, restore expired Snoozed books to your To be read shelf, process book searches
+              and ISBN lookups, retrieve factual movie information and streaming availability,
+              maintain service reliability, and respond to support or privacy requests.
             </PolicyText>
             <PolicyText>
               Adaptle does not sell personal information and does not use your data for behavioral
@@ -166,9 +166,11 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
               the anonymous user.
             </PolicyText>
             <PolicyText>
-              Server-side library and score data is retained until you request deletion or the
-              service must retain a limited record for legal, security, or operational reasons.
-              Local cached data remains until you clear the app&apos;s storage or uninstall the app.
+              Removing a book from your library deletes its personal shelf row, while the
+              copyright-safe catalog facts remain available to other users. Server-side score data
+              and any remaining library data is retained until you request deletion or the service
+              must retain a limited record for legal, security, or operational reasons. Local cached
+              data remains until you clear the app&apos;s storage or uninstall the app.
             </PolicyText>
           </PolicySection>
 

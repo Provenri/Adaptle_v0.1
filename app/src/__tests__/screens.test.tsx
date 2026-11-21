@@ -228,7 +228,7 @@ describe('tab screens', () => {
     const screen = await render(<PrivacyPolicyScreen />, { wrapper: AppDataProvider });
 
     expect(screen.getByText('Privacy Policy')).toBeTruthy();
-    expect(screen.getAllByText(/provenri@gmail\.com/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/adaptle\.privacy@gmail\.com/).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Request data deletion' })).toBeTruthy();
   });
 });
