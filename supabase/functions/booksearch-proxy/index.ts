@@ -105,9 +105,14 @@ async function lookupOpenLibraryIsbn(isbn13: string): Promise<BookCandidate | nu
 }
 
 async function lookupGoogleBooksIsbn(isbn13: string): Promise<BookCandidate | null> {
-  const response = await fetch(`${GB_BASE}/volumes?q=isbn:${isbn13}&maxResults=1`, {
-    headers: { Accept: 'application/json' },
-  });
+  const apiKey = Deno.env.get('GOOGLE_BOOKS_API_KEY');
+  const keyParameter = apiKey ? `&key=${encodeURIComponent(apiKey)}` : '';
+  const response = await fetch(
+    `${GB_BASE}/volumes?q=isbn:${isbn13}&maxResults=1${keyParameter}`,
+    {
+      headers: { Accept: 'application/json' },
+    },
+  );
   if (!response.ok) return null;
   const data = await response.json();
   const volume: GoogleBooksVolume | undefined = data.items?.[0];

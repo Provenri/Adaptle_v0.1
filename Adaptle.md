@@ -60,11 +60,11 @@ To eliminate publisher cover copyright risk and broken external image URLs, ever
 ## 4. Daily Gameplay Loop, Hints & Scoring
 
 ### Part 1: 5-Round Book-to-Movie Cast Match (15 Points Max)
-1. **The Prompt:** Displays one book's **Auto-Generated Typographic Cover**, title, and author, alongside **3 shuffled lead-actor pairs** from three adaptations (without naming the movies).
+1. **The Prompt:** Displays one book's **Auto-Generated Typographic Cover**, title, author, and the named screen adaptation, alongside **3 shuffled lead-actor pairs** from three adaptations.
 2. **The 3-Tier Progressive Hint Ladder:**
    * **Start (0 Hints Used):** **3 Points** potential.
-   * **Hint 1 — Masked Movie Title (Hangman Letters):** Drops round potential to **2 Points** (e.g., `B _ _ _ _   R _ _ _ _ _`).
-   * **Hint 2 — Release Year & Movie Setting:** Drops round potential to **1 Point** (e.g., *"1982 · Dystopian 2019 Los Angeles"*).
+   * **Hint 1 — Release Year & Movie Setting:** Drops round potential to **2 Points** (e.g., *"1982 · Dystopian 2019 Los Angeles"*).
+   * **Hint 2 — Character Roles:** Drops round potential to **1 Point** (e.g., *"A weary detective and an experimental android"*).
    * **Hint 3 — Lead Actor Initials:** Stays at **1 Point** as a final rescue clue (e.g., `H. F. & S. Y.`).
    * **Wrong Guess:** **0 Points** (still displays the Reveal Card).
 3. **The Reveal Card:** Displays the hidden movie poster, release year, director, cast, and streaming providers (via TMDB), plus 1-tap shelf buttons (**`To be read`**, **`Finished`**, **`Snooze`**).
@@ -88,18 +88,19 @@ Players choose what both works share out of **3 choices** across `The Setting`, 
 │  Current Round Potential: [ 2 PTS ] (1 Hint Used)   │
 ├─────────────────────────────────────────────────────┤
 │                                                     │
-│  ┌─────────┐   WHICH ACTORS STAR IN THE              │
-│   │  TYPO-  │   SCREEN ADAPTATION OF THIS BOOK?     │
+│  ┌─────────┐   WHICH ACTORS STAR IN THIS             │
+│  │ SOURCE  │   BOOK'S SCREEN ADAPTATION?            │
 │   │ GRAPHIC │                                       │
 │   │  COVER  │   Do Androids Dream of Electric       │
 │   │  (2:3)  │   Sheep?                              │
-│   └─────────┘   by Philip K. Dick                   │
+│  └─────────┘   by Philip K. Dick                   │
+│                Screen adaptation: Blade Runner      │
 │                                                     │
 ├─────────────────────────────────────────────────────┤
 │  NEED A CLUE? (Tap to unlock next hint)             │
 │                                                     │
-│  ✅ HINT 1 (Title): B _ _ _ _   R _ _ _ _ _          │
-│  🔓 [ Unlock Hint 2: Year & Setting (-1 pt) ]       │
+│  ✅ HINT 1: 1982 · Dystopian 2019 Los Angeles       │
+│  🔓 [ Unlock Hint 2: Character Roles (-1 pt) ]     │
 │  🔒 Hint 3: Lead Actor Initials (Locked)            │
 │                                                     │
 ├─────────────────────────────────────────────────────┤

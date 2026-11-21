@@ -10,6 +10,7 @@ export type LibraryBook = {
   genre: string | null;
   coverTheme: CoverTheme;
   status: ShelfStatus;
+  snoozedUntil?: string;
   tmdbId?: number;
   moviePosterPath?: string | null;
   movieTitle?: string;

@@ -1,11 +1,13 @@
 import { Link, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { Image } from 'expo-image';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { APP_ICON } from '@/assets';
 import { getSupabaseClient, initializeAnonymousSession } from '@/lib/supabase';
 
 const CONTACT_EMAIL = 'provenri@gmail.com';
@@ -55,10 +57,20 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
             <ThemedText type="smallBold">← Back</ThemedText>
           </Pressable>
 
-          <ThemedText type="subtitle">Privacy Policy</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Adaptle · Provenri · Effective {EFFECTIVE_DATE}
-          </ThemedText>
+          <View style={styles.brandRow}>
+            <Image
+              accessibilityLabel="Adaptle"
+              contentFit="contain"
+              source={APP_ICON}
+              style={styles.headerLogo}
+            />
+            <View>
+              <ThemedText type="subtitle">Privacy Policy</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                Adaptle · Provenri · Effective {EFFECTIVE_DATE}
+              </ThemedText>
+            </View>
+          </View>
 
           <PolicySection title="1. About Adaptle">
             <PolicyText>
@@ -256,6 +268,16 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.six,
   },
   backButton: { alignSelf: 'flex-start', paddingVertical: Spacing.two },
+  brandRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  headerLogo: {
+    borderRadius: 12,
+    height: 52,
+    width: 52,
+  },
   section: { gap: Spacing.two },
   sectionTitle: {
     color: '#173E32',

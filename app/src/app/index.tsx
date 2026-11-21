@@ -1,6 +1,13 @@
 import { Image } from 'expo-image';
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type GestureResponderEvent,
+} from 'react-native';
 import ViewShot, { captureRef, type ViewShotRef } from 'react-native-view-shot';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,6 +15,7 @@ import { TypographicCover } from '@/components/typographic-cover';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { APP_ICON } from '@/assets';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
 import type { BonusItem, DailyRoundDetails, ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import {
@@ -17,11 +25,11 @@ import {
   getRoundBreakdown,
   getRoundPotential,
   getTotalPoints,
-  maskMovieTitle,
   type DailyPuzzle,
 } from '@/lib/game-engine';
 import { createScoreShareText, shareScoreImage } from '@/lib/score-sharing';
 import { createDailyScore, currentPuzzleDate } from '@/lib/scores';
+import { SNOOZE_OPTIONS, snoozeUntil } from '@/lib/snooze';
 import { useDailyPuzzle, useLibrary } from '@/providers/app-data-provider';
 
 type ShelfStatus = 'TO_BE_READ' | 'FINISHED' | 'SNOOZE';
@@ -113,17 +121,28 @@ function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
           showsVerticalScrollIndicator={false}
           testID="play-scroll-view">
           <View style={styles.headingRow}>
-            <View>
-              <ThemedText type="smallBold" style={styles.eyebrow}>
-                ADAPTLE #{dailyPuzzle.id}
-              </ThemedText>
-              <ThemedText type="subtitle" style={styles.title}>
-                {state.phase === 'bonus' || state.phase === 'bonus-reveal'
-                  ? 'Common Thread'
-                  : state.phase === 'complete'
-                    ? 'Daily complete'
-                    : `Round ${state.roundIndex + 1} of 5`}
-              </ThemedText>
+            <View style={styles.brandRow}>
+              <Image
+                accessibilityLabel="Adaptle"
+                contentFit="contain"
+                source={APP_ICON}
+                style={styles.headerLogo}
+              />
+              <View>
+                <ThemedText type="smallBold" style={styles.eyebrow}>
+                  ADAPTLE #{dailyPuzzle.id}
+                </ThemedText>
+                <ThemedText type="subtitle" style={styles.title}>
+                  {state.phase === 'bonus' || state.phase === 'bonus-reveal'
+                    ? 'Common Thread'
+                    : state.phase === 'complete'
+                      ? 'Daily complete'
+                      : `Round ${state.roundIndex + 1} of 5`}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Current round potential: {getRoundPotential(state.hintsUsed)} PTS
+                </ThemedText>
+              </View>
             </View>
             <ThemedText type="smallBold" style={styles.streak}>
               🔥 {currentStreak}
@@ -154,8 +173,18 @@ function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
               }
               savedStatus={books.find((book) => book.isbn13 === details.isbn13)?.status}
               onSave={(status) => {
-                saveBook(details, status);
-                setSavedThisSession((current) => ({ ...current, [details.isbn13]: true }));
+                if (status === 'SNOOZE') {
+                  chooseSnoozeDuration((deadline) => {
+                    saveBook(details, status, deadline);
+                    setSavedThisSession((current) => ({
+                      ...current,
+                      [details.isbn13]: true,
+                    }));
+                  });
+                } else {
+                  saveBook(details, status);
+                  setSavedThisSession((current) => ({ ...current, [details.isbn13]: true }));
+                }
               }}
             />
           ) : null}
@@ -245,24 +274,22 @@ type QuestionViewProps = {
 function QuestionView({ details, hintsUsed, round, onHint, onAnswer }: QuestionViewProps) {
   return (
     <View style={styles.stack}>
-      <View style={styles.potentialRow}>
-        <ThemedText type="small" themeColor="textSecondary">
-          Current round potential
-        </ThemedText>
-        <ThemedText type="smallBold">{getRoundPotential(hintsUsed)} PTS</ThemedText>
-      </View>
-
       <View style={styles.bookRow}>
-        <TypographicCover
-          title={details.title}
-          author={details.author}
-          genre={details.genre}
-          coverTheme={details.coverTheme}
-          width={126}
-        />
+        <View style={styles.coverColumn}>
+          <ThemedText type="smallBold" style={styles.sourceLabel}>
+            Source book
+          </ThemedText>
+          <TypographicCover
+            title={details.title}
+            author={details.author}
+            genre={details.genre}
+            coverTheme={details.coverTheme}
+            width={126}
+          />
+        </View>
         <View style={styles.prompt}>
           <ThemedText type="smallBold" style={styles.kicker}>
-            Which actors star in the screen adaptation?
+            Which actors star in this book&apos;s screen adaptation?
           </ThemedText>
           <ThemedText type="subtitle" style={styles.bookTitle}>
             {details.title}
@@ -271,6 +298,14 @@ function QuestionView({ details, hintsUsed, round, onHint, onAnswer }: QuestionV
             by {details.author}
             {details.publicationYear ? ` · ${details.publicationYear}` : ''}
           </ThemedText>
+          <View style={styles.adaptationPrompt}>
+            <ThemedText type="smallBold" style={styles.adaptationLabel}>
+              Screen adaptation
+            </ThemedText>
+            <ThemedText type="default" style={styles.adaptationName}>
+              {details.movieTitle}
+            </ThemedText>
+          </View>
         </View>
       </View>
 
@@ -280,16 +315,16 @@ function QuestionView({ details, hintsUsed, round, onHint, onAnswer }: QuestionV
         </ThemedText>
         <HintCard
           number={1}
-          title="Movie title letters"
+          title="Year and setting"
           unlocked={hintsUsed >= 1}
-          value={maskMovieTitle(details.movieTitle)}
+          value={`${details.releaseYear} · ${details.settingHint}`}
           action={hintsUsed === 0 ? onHint : undefined}
         />
         <HintCard
           number={2}
-          title="Year and setting"
+          title="Character roles"
           unlocked={hintsUsed >= 2}
-          value={`${details.releaseYear} · ${details.settingHint}`}
+          value={details.characterHint}
           action={hintsUsed === 1 ? onHint : undefined}
         />
         <HintCard
@@ -521,6 +556,16 @@ function ShelfButton({
   );
 }
 
+function chooseSnoozeDuration(onSelect: (deadline: string) => void): void {
+  Alert.alert('Snooze this book', 'When should it return to To be read?', [
+    ...SNOOZE_OPTIONS.map((option) => ({
+      text: option.label,
+      onPress: () => onSelect(snoozeUntil(option.days)),
+    })),
+    { text: 'Cancel', style: 'cancel' },
+  ]);
+}
+
 function BonusView({
   choices,
   items,
@@ -647,9 +692,17 @@ function SummaryView({
     <View style={styles.summaryStack}>
       <ViewShot ref={scoreCard} options={{ format: 'png', quality: 1 }}>
         <View style={styles.shareCard} testID="daily-score-card">
-          <ThemedText type="smallBold" style={styles.shareBrand}>
-            ADAPTLE #{puzzleNumber}
-          </ThemedText>
+          <View style={styles.shareBrandRow}>
+            <Image
+              accessibilityLabel="Adaptle"
+              contentFit="contain"
+              source={APP_ICON}
+              style={styles.shareLogo}
+            />
+            <ThemedText type="smallBold" style={styles.shareBrand}>
+              ADAPTLE #{puzzleNumber}
+            </ThemedText>
+          </View>
           <ThemedText style={styles.trophy}>🏆</ThemedText>
           <ThemedText type="subtitle" style={styles.shareScore}>
             {total} / 18 PTS
@@ -753,6 +806,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  brandRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  headerLogo: {
+    borderRadius: 12,
+    height: 46,
+    width: 46,
+    marginTop: 2,
+  },
   eyebrow: {
     color: '#117579',
     letterSpacing: 1.4,
@@ -770,19 +834,40 @@ const styles = StyleSheet.create({
   stack: {
     gap: Spacing.three,
   },
-  potentialRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.two,
-  },
   bookRow: {
     flexDirection: 'row',
-    gap: Spacing.four,
+    gap: Spacing.three,
+    alignItems: 'flex-start',
+  },
+  coverColumn: {
     alignItems: 'center',
+    gap: Spacing.two,
   },
   prompt: {
     flex: 1,
     gap: Spacing.two,
+    paddingTop: 26,
+  },
+  adaptationPrompt: {
+    borderLeftColor: '#A84732',
+    borderLeftWidth: 3,
+    marginTop: Spacing.one,
+    paddingLeft: Spacing.two,
+  },
+  sourceLabel: {
+    color: '#173E32',
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  adaptationLabel: {
+    color: '#A84732',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+  adaptationName: {
+    color: '#173E32',
+    fontWeight: '700',
   },
   kicker: {
     color: '#A84732',
@@ -1026,6 +1111,16 @@ const styles = StyleSheet.create({
   shareBrand: {
     color: '#B9D29C',
     letterSpacing: 1.8,
+  },
+  shareBrandRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  shareLogo: {
+    borderRadius: 8,
+    height: 34,
+    width: 34,
   },
   shareScore: {
     color: '#FFF8E7',

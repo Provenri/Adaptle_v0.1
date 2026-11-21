@@ -4,6 +4,7 @@ import {
   useCameraPermissions,
   type PermissionResponse,
 } from 'expo-camera';
+import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -13,7 +14,9 @@ import { TypographicCover } from '@/components/typographic-cover';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { APP_ICON } from '@/assets';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
+import { formatSnoozeDate, SNOOZE_OPTIONS, snoozeUntil } from '@/lib/snooze';
 import {
   SHELF_LABELS,
   type BookCandidate,
@@ -65,18 +68,26 @@ export default function LibraryScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.headingRow}>
-            <View>
-              <ThemedText type="smallBold" style={styles.eyebrow}>
-                YOUR SHELF
-              </ThemedText>
-              <ThemedText type="subtitle">My Library</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {books.length} {books.length === 1 ? 'book' : 'books'} saved ·{' '}
-                {books.filter((book) => book.movieTitle).length}{' '}
-                {books.filter((book) => book.movieTitle).length === 1
-                  ? 'screen adaptation'
-                  : 'screen adaptations'}
-              </ThemedText>
+            <View style={styles.brandRow}>
+              <Image
+                accessibilityLabel="Adaptle"
+                contentFit="contain"
+                source={APP_ICON}
+                style={styles.headerLogo}
+              />
+              <View style={styles.headingCopy}>
+                <ThemedText type="smallBold" style={styles.eyebrow}>
+                  YOUR SHELF
+                </ThemedText>
+                <ThemedText type="subtitle">My Library</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.shelfSummary}>
+                  {books.length} {books.length === 1 ? 'book' : 'books'} saved ·{' '}
+                  {books.filter((book) => book.movieTitle).length}{' '}
+                  {books.filter((book) => book.movieTitle).length === 1
+                    ? 'screen adaptation'
+                    : 'screen adaptations'}
+                </ThemedText>
+              </View>
             </View>
             <Pressable
               accessibilityRole="button"
@@ -132,6 +143,7 @@ export default function LibraryScreen() {
                   book={book}
                   key={book.isbn13}
                   onStatusChange={(status) => updateStatus(book.isbn13, status)}
+                  onSnooze={(deadline) => updateStatus(book.isbn13, 'SNOOZE', deadline)}
                   onRemove={() =>
                     Alert.alert(
                       'Remove from library?',
@@ -208,10 +220,12 @@ function ShelfFilterButton({
 function LibraryBookCard({
   book,
   onStatusChange,
+  onSnooze,
   onRemove,
 }: {
   book: LibraryBook;
   onStatusChange: (status: ShelfStatus) => void;
+  onSnooze: (deadline: string) => void;
   onRemove: () => void;
 }) {
   const [editingStatus, setEditingStatus] = useState(false);
@@ -255,6 +269,11 @@ function LibraryBookCard({
               Added manually · No known adaptation
             </ThemedText>
           )}
+          {book.status === 'SNOOZE' && book.snoozedUntil ? (
+            <ThemedText type="smallBold" style={styles.snoozeDate}>
+              😴 Snoozed until {formatSnoozeDate(book.snoozedUntil)}
+            </ThemedText>
+          ) : null}
         </View>
       </View>
       <View style={styles.statusRow}>
@@ -277,8 +296,15 @@ function LibraryBookCard({
                 accessibilityRole="button"
                 key={status}
                 onPress={() => {
-                  onStatusChange(status);
-                  setEditingStatus(false);
+                  if (status === 'SNOOZE') {
+                    chooseSnoozeDuration((deadline) => {
+                      onSnooze(deadline);
+                      setEditingStatus(false);
+                    });
+                  } else {
+                    onStatusChange(status);
+                    setEditingStatus(false);
+                  }
                 }}
                 style={({ pressed }) => [styles.statusOption, pressed && styles.pressed]}>
                 <ThemedText type="small" style={styles.darkText}>
@@ -300,6 +326,16 @@ function LibraryBookCard({
       ) : null}
     </View>
   );
+}
+
+function chooseSnoozeDuration(onSelect: (deadline: string) => void): void {
+  Alert.alert('Snooze this book', 'When should it return to To be read?', [
+    ...SNOOZE_OPTIONS.map((option) => ({
+      text: option.label,
+      onPress: () => onSelect(snoozeUntil(option.days)),
+    })),
+    { text: 'Cancel', style: 'cancel' },
+  ]);
 }
 
 function EmptyShelf({ query, onAdd }: { query: string; onAdd: () => void }) {
@@ -502,14 +538,38 @@ const styles = StyleSheet.create({
   headingRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: Spacing.two,
     justifyContent: 'space-between',
+  },
+  brandRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: Spacing.two,
+    flex: 1,
+    minWidth: 0,
+  },
+  headingCopy: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+  },
+  headerLogo: {
+    borderRadius: 12,
+    height: 46,
+    width: 46,
+    marginTop: 2,
   },
   eyebrow: { color: '#117579', letterSpacing: 1.4 },
   addButton: {
     backgroundColor: '#173E32',
     borderRadius: 999,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two,
+    flexShrink: 0,
+  },
+  shelfSummary: {
+    flexShrink: 1,
+    lineHeight: 18,
   },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   filterButton: {
@@ -560,6 +620,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
+  },
+  snoozeDate: {
+    color: '#74421B',
+    marginTop: Spacing.one,
   },
   removeButton: {
     borderColor: '#A84732',

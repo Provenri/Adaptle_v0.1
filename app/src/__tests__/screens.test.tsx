@@ -123,7 +123,8 @@ describe('tab screens', () => {
   it('renders the Play screen', async () => {
     const { getByText } = await renderScreen(<PlayScreen />);
     expect(getByText(/ADAPTLE/)).toBeTruthy();
-    expect(getByText('Which actors star in the screen adaptation?')).toBeTruthy();
+    expect(getByText("Which actors star in this book's screen adaptation?")).toBeTruthy();
+    expect(getByText('Source book')).toBeTruthy();
   });
 
   it('shows the correct characters after a wrong answer', async () => {
@@ -140,7 +141,9 @@ describe('tab screens', () => {
     const screen = await renderScreen(<PlayScreen />);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Unlock · -1 pt' }));
-    expect(screen.getByText('B _ _ _ _ R _ _ _ _ _')).toBeTruthy();
+    expect(screen.getByText('1982 · Dystopian 2019 Los Angeles')).toBeTruthy();
+    expect(screen.getByText('Screen adaptation')).toBeTruthy();
+    expect(screen.getByText('Blade Runner')).toBeTruthy();
 
     await fireEvent.press(screen.getByLabelText('Answer A: Harrison Ford & Sean Young'));
     expect(screen.getByText('✓ Correct! · +2 pts')).toBeTruthy();
@@ -181,8 +184,15 @@ describe('tab screens', () => {
         name: 'Change status for Do Androids Dream of Electric Sheep?',
       })
     );
+    const snoozeAlert = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((_title, _message, buttons) => {
+        buttons?.find((button) => button.text === '1 week')?.onPress?.();
+      });
     await fireEvent.press(screen.getByRole('button', { name: 'Snooze' }));
     expect(screen.getByText('Snooze 1')).toBeTruthy();
+    expect(screen.getByText(/Snoozed until/)).toBeTruthy();
+    snoozeAlert.mockRestore();
   });
 
   it('adds a book from search results', async () => {
