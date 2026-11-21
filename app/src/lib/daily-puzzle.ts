@@ -79,6 +79,70 @@ export class PuzzleUnavailableError extends Error {
   }
 }
 
+export type AdaptationPractice = {
+  details: DailyRoundDetails;
+  choices: GameChoice[];
+  correctChoiceId: string;
+};
+
+export async function fetchAdaptationPractice(isbn13: string): Promise<AdaptationPractice> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new PuzzleUnavailableError('Adaptle is not connected to Supabase yet.');
+  await initializeAnonymousSession();
+
+  const select =
+    'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint';
+  const { data: target, error: targetError } = await supabase
+    .from('catalog_items')
+    .select(select)
+    .eq('isbn13', isbn13)
+    .maybeSingle();
+  if (targetError) throw targetError;
+  if (!target || !target.tmdb_id) {
+    throw new PuzzleUnavailableError('This book does not have a playable screen adaptation.');
+  }
+
+  const { data: decoyRows, error: decoyError } = await supabase
+    .from('catalog_items')
+    .select(select)
+    .neq('isbn13', isbn13)
+    .not('tmdb_id', 'is', null)
+    .not('lead_actors', 'is', null)
+    .limit(30);
+  if (decoyError) throw decoyError;
+  const validDecoys = (decoyRows as CatalogRow[]).filter((row) => {
+    try {
+      toRoundDetails(row);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  if (validDecoys.length < 2)
+    throw new PuzzleUnavailableError('Practice choices are not ready yet.');
+
+  const selected = shuffleChoices(
+    validDecoys.map((row) => ({
+      id: `${row.isbn13}-cast`,
+      label: readStringArray(row.lead_actors, 'lead_actors', 2).join(' & '),
+    })),
+    `${isbn13}:practice`
+  )
+    .filter((choice) => choice.id !== `${isbn13}-cast`)
+    .slice(0, 2);
+  const correctChoiceId = `${target.isbn13}-cast`;
+  const correct: GameChoice = {
+    id: correctChoiceId,
+    label: readStringArray(target.lead_actors, 'lead_actors', 2).join(' & '),
+  };
+
+  return {
+    details: toRoundDetails(target as CatalogRow),
+    correctChoiceId,
+    choices: shuffleChoices([correct, ...selected], `${isbn13}:practice-choices`),
+  };
+}
+
 export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const supabase = getSupabaseClient();
   if (!supabase) {
@@ -219,8 +283,12 @@ function toRoundDetails(book: CatalogRow): DailyRoundDetails {
     publicationYear: book.publication_year,
     genre: book.genre,
     coverTheme: book.cover_theme,
-    settingHint: requireText(book.setting_hint, 'setting_hint'),
-    characterHint: requireText(book.character_hint, 'character_hint'),
+    settingHint:
+      optionalText(book.setting_hint) ??
+      `${requireNumber(book.release_year, 'release_year')} screen adaptation`,
+    characterHint:
+      optionalText(book.character_hint) ??
+      `Two leads portrayed by ${readStringArray(book.lead_actors, 'lead_actors', 2).join(' and ')}`,
     movieTitle: requireText(book.movie_title, 'movie_title'),
     releaseYear: requireNumber(book.release_year, 'release_year'),
     director: requireText(book.director, 'director'),
@@ -271,6 +339,10 @@ function requireText(value: unknown, field: string): string {
     throw new PuzzleUnavailableError(`Today's puzzle is missing ${field}.`);
   }
   return value;
+}
+
+function optionalText(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
 function requireNumber(value: unknown, field: string): number {

@@ -90,6 +90,19 @@ jest.mock('@/lib/supabase', () => ({
       source: 'openlibrary_manual',
     },
   ],
+  getSurpriseBook: async () => ({
+    isbn13: '9780441172719',
+    title: 'Dune',
+    author: 'Frank Herbert',
+    genre: 'Science fiction',
+    coverTheme: 'fantasy_plum',
+    numberOfPages: null,
+    publicationYear: 1965,
+    subjects: ['Science fiction'],
+    source: 'openlibrary_manual',
+    hasAdaptation: true,
+    tmdbId: 438631,
+  }),
 }));
 
 async function renderScreen(element: ReactElement) {
@@ -197,17 +210,46 @@ describe('tab screens', () => {
     expect(screen.getByText('Reading 1')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Reading 1' }));
     expect(screen.getByText('Show books you’re reading now.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Play adaptation/ })).toBeTruthy();
   });
 
   it('adds a book from search results', async () => {
     const screen = await renderScreen(<LibraryScreen />);
     await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
     await fireEvent.changeText(screen.getByLabelText('Search book catalog'), 'Project Hail Mary');
+    await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
     await fireEvent.press(await screen.findByText('Project Hail Mary'));
 
     expect(screen.queryByLabelText('Search book catalog')).toBeNull();
     expect(screen.getByText('2 books saved · 1 screen adaptation')).toBeTruthy();
     expect(screen.getByText('Project Hail Mary')).toBeTruthy();
+  });
+
+  it('filters the library to books with adaptations', async () => {
+    const screen = await renderScreen(<LibraryScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
+    await fireEvent.changeText(screen.getByLabelText('Search book catalog'), 'Project Hail Mary');
+    await fireEvent.press(await screen.findByText('Project Hail Mary'));
+
+    await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
+    await fireEvent.changeText(screen.getByLabelText('Search book catalog'), 'Dune');
+    await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
+    await fireEvent.press(
+      screen.getByRole('switch', { name: 'Show search results with screen adaptations only' })
+    );
+
+    expect(
+      screen.getByRole('switch', { name: 'Show search results with screen adaptations only' }).props
+        .accessibilityState
+    ).toEqual({ checked: true });
+  });
+
+  it('shows a surprise adaptation candidate without search input', async () => {
+    const screen = await renderScreen(<LibraryScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
+    await fireEvent.press(screen.getByRole('button', { name: /Surprise me/ }));
+
+    expect(await screen.findByText('Dune')).toBeTruthy();
   });
 
   it('removes a saved book after confirmation', async () => {

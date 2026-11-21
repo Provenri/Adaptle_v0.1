@@ -7,7 +7,16 @@ import {
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TypographicCover } from '@/components/typographic-cover';
@@ -22,9 +31,10 @@ import {
   type LibraryBook,
   type ShelfStatus,
 } from '@/data/library-data';
-import { searchBookCatalog } from '@/lib/supabase';
+import { getSurpriseBook, searchBookCatalog } from '@/lib/supabase';
 import { useLibrary } from '@/providers/app-data-provider';
 import { PrivacyPolicyContent } from './privacy';
+import { AdaptationPractice } from '@/components/adaptation-practice';
 
 type ShelfFilter = ShelfStatus | 'ALL';
 
@@ -35,6 +45,7 @@ export default function LibraryScreen() {
   const [query, setQuery] = useState('');
   const [addBookOpen, setAddBookOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [practiceIsbn13, setPracticeIsbn13] = useState<string | null>(null);
   const counts = useMemo(
     () => ({
       TO_BE_READ: books.filter((book) => book.status === 'TO_BE_READ').length,
@@ -171,6 +182,7 @@ export default function LibraryScreen() {
                       ]
                     )
                   }
+                  onPractice={book.tmdbId ? () => setPracticeIsbn13(book.isbn13) : undefined}
                 />
               ))}
             </View>
@@ -194,6 +206,17 @@ export default function LibraryScreen() {
           presentationStyle="fullScreen"
           visible={privacyOpen}>
           <PrivacyPolicyContent onBack={() => setPrivacyOpen(false)} />
+        </Modal>
+        <Modal
+          animationType="slide"
+          onRequestClose={() => setPracticeIsbn13(null)}
+          presentationStyle="fullScreen"
+          visible={practiceIsbn13 !== null}>
+          {practiceIsbn13 ? (
+            <SafeAreaView style={styles.modalSafeArea}>
+              <AdaptationPractice isbn13={practiceIsbn13} onClose={() => setPracticeIsbn13(null)} />
+            </SafeAreaView>
+          ) : null}
         </Modal>
       </SafeAreaView>
     </ThemedView>
@@ -234,17 +257,19 @@ function LibraryBookCard({
   book,
   onStatusChange,
   onRemove,
+  onPractice,
 }: {
   book: LibraryBook;
   onStatusChange: (status: ShelfStatus) => void;
   onRemove: () => void;
+  onPractice?: () => void;
 }) {
   const [editingStatus, setEditingStatus] = useState(false);
   const providers = useTmdbProviders(book.tmdbId);
   const providerList = providerNames(providers.data);
 
   return (
-    <View style={styles.bookCard}>
+    <View style={styles.bookCard} testID={`library-book-${book.isbn13}`}>
       <View style={styles.bookCardTop}>
         <TypographicCover
           author={book.author}
@@ -283,9 +308,6 @@ function LibraryBookCard({
         </View>
       </View>
       <View style={styles.statusRow}>
-        <ThemedText type="small" themeColor="textSecondary">
-          Status
-        </ThemedText>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Change status for ${book.title}`}
@@ -300,6 +322,16 @@ function LibraryBookCard({
             ▾
           </ThemedText>
         </Pressable>
+        {onPractice ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onPractice}
+            style={({ pressed }) => [styles.practiceButton, pressed && styles.pressed]}>
+            <ThemedText type="smallBold" style={styles.practiceButtonText}>
+              🎬 Play adaptation
+            </ThemedText>
+          </Pressable>
+        ) : null}
       </View>
       {editingStatus ? (
         <View style={styles.statusMenu}>
@@ -368,16 +400,25 @@ function AddBookModal({
   onAdd: (candidate: BookCandidate) => void;
 }) {
   const [query, setQuery] = useState('');
+  const [submittedQuery, setSubmittedQuery] = useState('');
+  const [surpriseBook, setSurpriseBook] = useState<BookCandidate | null>(null);
+  const [isSurprising, setIsSurprising] = useState(false);
+  const [searchVersion, setSearchVersion] = useState(0);
   const [scanning, setScanning] = useState(false);
+  const [adaptationsOnly, setAdaptationsOnly] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const searchQuery = useQuery({
-    queryKey: ['book-search', query.trim()],
-    queryFn: () => searchBookCatalog(query.trim()),
-    enabled: visible && query.trim().length >= 2,
+    queryKey: ['book-search', submittedQuery, adaptationsOnly, searchVersion],
+    queryFn: () => searchBookCatalog(submittedQuery, adaptationsOnly),
+    enabled: visible && submittedQuery.length >= 2,
     staleTime: 5 * 60 * 1000,
   });
-  const results = searchQuery.data ?? [];
+  const results = (surpriseBook ? [surpriseBook] : (searchQuery.data ?? []))
+    .filter((candidate) => !adaptationsOnly || candidate.hasAdaptation)
+    .filter(
+      (candidate, index, all) => all.findIndex((item) => item.isbn13 === candidate.isbn13) === index
+    );
 
   const startScanning = async () => {
     setScanError(null);
@@ -385,6 +426,24 @@ function AddBookModal({
       ? permission
       : await requestPermission();
     if (response?.granted) setScanning(true);
+  };
+
+  const showSurpriseBook = async () => {
+    setIsSurprising(true);
+    setScanError(null);
+    try {
+      const candidate = await getSurpriseBook();
+      if (candidate) {
+        setSurpriseBook(candidate);
+        setSubmittedQuery('');
+      } else {
+        setScanError('No surprise adaptation is available right now.');
+      }
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : 'Surprise search failed.');
+    } finally {
+      setIsSurprising(false);
+    }
   };
 
   const handleBarcode = async ({ data }: BarcodeScanningResult) => {
@@ -445,21 +504,63 @@ function AddBookModal({
                   <ThemedText type="subtitle">×</ThemedText>
                 </Pressable>
               </View>
-              <TextInput
-                accessibilityLabel="Search book catalog"
-                autoFocus
-                onChangeText={setQuery}
-                placeholder="Title, author, or ISBN…"
-                placeholderTextColor="#737B78"
-                style={styles.searchInput}
-                value={query}
-              />
+              <View style={styles.searchRow}>
+                <TextInput
+                  accessibilityLabel="Search book catalog"
+                  autoFocus
+                  onChangeText={setQuery}
+                  placeholder="Title, author, or ISBN…"
+                  placeholderTextColor="#737B78"
+                  returnKeyType="search"
+                  onSubmitEditing={() => {
+                    if (query.trim().length >= 2) {
+                      setSubmittedQuery(query.trim());
+                      setSearchVersion((version) => version + 1);
+                    }
+                  }}
+                  style={[styles.searchInput, styles.modalSearchInput]}
+                  value={query}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: query.trim().length < 2 }}
+                  onPress={() => {
+                    if (query.trim().length >= 2) {
+                      setSubmittedQuery(query.trim());
+                      setSearchVersion((version) => version + 1);
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.searchButton,
+                    query.trim().length < 2 && styles.disabledButton,
+                    pressed && styles.pressed,
+                  ]}>
+                  <ThemedText type="smallBold" style={styles.lightText}>
+                    Search
+                  </ThemedText>
+                </Pressable>
+              </View>
               <Pressable
-                accessibilityRole="button"
-                onPress={startScanning}
-                style={({ pressed }) => [styles.scanButton, pressed && styles.pressed]}>
-                <ThemedText type="smallBold" style={styles.lightText}>
-                  Scan ISBN barcode
+                accessibilityRole="switch"
+                accessibilityState={{ checked: adaptationsOnly }}
+                accessibilityLabel="Show search results with screen adaptations only"
+                onPress={() => setAdaptationsOnly((current) => !current)}
+                style={({ pressed }) => [
+                  styles.adaptationToggle,
+                  adaptationsOnly && styles.adaptationToggleActive,
+                  pressed && styles.pressed,
+                ]}>
+                <View
+                  style={[styles.toggleIndicator, adaptationsOnly && styles.toggleIndicatorActive]}
+                />
+                <ThemedText
+                  type="smallBold"
+                  style={
+                    adaptationsOnly
+                      ? styles.adaptationToggleActiveText
+                      : styles.adaptationToggleText
+                  }>
+                  Adaptations only
                 </ThemedText>
               </Pressable>
               {permission?.granted === false && (
@@ -474,9 +575,12 @@ function AddBookModal({
               ) : null}
               <ScrollView contentContainerStyle={styles.results}>
                 {searchQuery.isFetching ? (
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-                    Searching the catalog…
-                  </ThemedText>
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator color="#117579" size="small" />
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Searching the catalog…
+                    </ThemedText>
+                  </View>
                 ) : null}
                 {searchQuery.isError ? (
                   <ThemedText accessibilityRole="alert" type="small" style={styles.errorText}>
@@ -511,13 +615,33 @@ function AddBookModal({
                 ))}
                 {!searchQuery.isFetching &&
                 !searchQuery.isError &&
-                query.trim().length >= 2 &&
+                submittedQuery.length >= 2 &&
                 results.length === 0 ? (
                   <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
                     No books found. Check the title, author, or ISBN.
                   </ThemedText>
                 ) : null}
               </ScrollView>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void showSurpriseBook()}
+                style={({ pressed }) => [styles.surpriseButton, pressed && styles.pressed]}>
+                {isSurprising ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <ThemedText type="smallBold" style={styles.lightText}>
+                    🎲 Surprise me
+                  </ThemedText>
+                )}
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={startScanning}
+                style={({ pressed }) => [styles.scanButton, pressed && styles.pressed]}>
+                <ThemedText type="smallBold" style={styles.lightText}>
+                  Scan ISBN barcode
+                </ThemedText>
+              </Pressable>
             </View>
           )}
         </SafeAreaView>
@@ -578,6 +702,35 @@ const styles = StyleSheet.create({
   filterHelp: {
     marginTop: -Spacing.two,
   },
+  adaptationToggle: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderColor: '#173E32',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  adaptationToggleActive: {
+    backgroundColor: '#173E32',
+  },
+  adaptationToggleText: {
+    color: '#173E32',
+  },
+  adaptationToggleActiveText: {
+    color: '#FFFFFF',
+  },
+  toggleIndicator: {
+    backgroundColor: '#B8C7C0',
+    borderRadius: 999,
+    height: 12,
+    width: 12,
+  },
+  toggleIndicatorActive: {
+    backgroundColor: '#B9D29C',
+  },
   filterButton: {
     alignItems: 'center',
     borderColor: '#CCD2CF',
@@ -623,6 +776,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: Spacing.two,
   },
+  practiceButton: {
+    backgroundColor: '#117579',
+    borderRadius: 999,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  practiceButtonText: { color: '#FFFFFF' },
   statusButton: {
     backgroundColor: '#FFFFFF',
     borderRadius: 999,
@@ -673,6 +833,33 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     padding: Spacing.four,
   },
+  searchRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  modalSearchInput: {
+    flex: 1,
+    minWidth: 0,
+  },
+  searchButton: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    backgroundColor: '#117579',
+    borderRadius: 14,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.three,
+  },
+  disabledButton: {
+    opacity: 0.45,
+  },
+  loadingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.two,
+    justifyContent: 'center',
+    padding: Spacing.three,
+  },
   modalHeading: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -683,6 +870,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#117579',
     borderRadius: 999,
+    padding: Spacing.three,
+  },
+  surpriseButton: {
+    alignItems: 'center',
+    backgroundColor: '#A84732',
+    borderRadius: 999,
+    minHeight: 48,
+    justifyContent: 'center',
     padding: Spacing.three,
   },
   results: { gap: Spacing.three, paddingBottom: Spacing.six },

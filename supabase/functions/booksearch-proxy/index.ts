@@ -20,6 +20,7 @@ import {
   type OpenLibrarySearchDoc,
   parsePublicationYear,
 } from './normalize.ts';
+import { filterByAdaptation, resolveAdaptations } from './adaptation-resolver.ts';
 
 const OL_BASE = 'https://openlibrary.org';
 const GB_BASE = 'https://www.googleapis.com/books/v1';
@@ -43,6 +44,9 @@ async function searchOpenLibrary(query: string): Promise<BookCandidate[]> {
   return docs
     .map(fromOpenLibraryDoc)
     .filter((c): c is BookCandidate => c !== null)
+    .filter((candidate, index, all) =>
+      all.findIndex((item) => item.isbn13 === candidate.isbn13) === index
+    )
     .slice(0, 10);
 }
 
@@ -131,7 +135,10 @@ Deno.serve(async (req) => {
     if (action === 'search') {
       const query = url.searchParams.get('q')?.trim();
       if (!query || query.length < 2) return errorResponse('q must be at least 2 characters', 400);
-      return jsonResponse({ items: await searchOpenLibrary(query) });
+      const candidates = await searchOpenLibrary(query);
+      const adaptationsOnly = url.searchParams.get('adaptations_only') === 'true';
+      if (!adaptationsOnly) return jsonResponse({ items: candidates });
+      return jsonResponse({ items: filterByAdaptation(await resolveAdaptations(candidates)) });
     }
 
     if (action === 'isbn') {
@@ -139,7 +146,17 @@ Deno.serve(async (req) => {
       if (!isbn13) return errorResponse('isbn must be a valid ISBN-13', 400);
       const candidate = (await lookupOpenLibraryIsbn(isbn13)) ??
         (await lookupGoogleBooksIsbn(isbn13));
-      return jsonResponse({ items: candidate ? [candidate] : [] });
+      if (!candidate) return jsonResponse({ items: [] });
+      const adaptationsOnly = url.searchParams.get('adaptations_only') === 'true';
+      const items = adaptationsOnly
+        ? filterByAdaptation(await resolveAdaptations([candidate]))
+        : [candidate];
+      return jsonResponse({ items });
+    }
+
+    if (action === 'random') {
+      const item = await randomAdaptation();
+      return jsonResponse({ items: item ? [item] : [] });
     }
 
     return errorResponse('action must be "search" or "isbn"', 400);
@@ -147,3 +164,51 @@ Deno.serve(async (req) => {
     return errorResponse('book lookup failed', 502);
   }
 });
+
+async function randomAdaptation(): Promise<BookCandidate | null> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceKey) return null;
+
+  const countResponse = await fetch(
+    `${supabaseUrl}/rest/v1/catalog_items?select=isbn13&tmdb_id=not.is.null&scheduled_date=not.is.null`,
+    {
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        Prefer: 'count=exact',
+      },
+    },
+  );
+  const count = Number.parseInt(
+    countResponse.headers.get('content-range')?.split('/')[1] ?? '0',
+    10,
+  );
+  if (!Number.isFinite(count) || count < 1) return null;
+
+  const offset = Math.floor(Math.random() * count);
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/catalog_items?tmdb_id=not.is.null&scheduled_date=not.is.null&select=isbn13,book_title,author,genre,cover_theme,publication_year,number_of_pages&limit=1&offset=${offset}`,
+    {
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+      },
+    },
+  );
+  if (!response.ok) return null;
+  const row = (await response.json())[0];
+  if (!row) return null;
+  return {
+    isbn13: row.isbn13,
+    title: row.book_title,
+    author: row.author,
+    numberOfPages: row.number_of_pages,
+    publicationYear: row.publication_year,
+    subjects: row.genre ? [row.genre] : [],
+    genre: row.genre,
+    coverTheme: row.cover_theme,
+    source: 'openlibrary_manual',
+    hasAdaptation: true,
+  };
+}

@@ -42,6 +42,20 @@ The EAS production environment must contain only:
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 
+## Public privacy policy
+
+- Production policy URL: `https://adaptle.expo.app/privacy`
+- Hosted through Expo Router Web on EAS Hosting.
+- The `/privacy` route is standalone and must not render inside the Play/My Library tab navigator.
+- Before Play Console submission, verify the URL returns HTTP 200, stays on `/privacy` after hydration, and displays `adaptle.privacy@gmail.com`.
+- Redeploy after policy-content changes:
+
+```bash
+cd app
+npx expo export --platform web --output-dir dist --clear
+npx eas-cli@latest deploy --prod --environment production --dev-domain adaptle --non-interactive
+```
+
 Build Android:
 
 ```bash

@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Slot, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
@@ -10,11 +10,20 @@ SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const pathname = usePathname();
+  const isStandaloneRoute = pathname === '/privacy';
+
   return (
     <AppDataProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
-        <AppTabs />
+        {isStandaloneRoute ? (
+          <Slot />
+        ) : (
+          <>
+            <AnimatedSplashOverlay />
+            <AppTabs />
+          </>
+        )}
       </ThemeProvider>
     </AppDataProvider>
   );

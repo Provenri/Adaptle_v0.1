@@ -17,6 +17,14 @@ export interface BookCandidate {
   genre: string | null;
   coverTheme: CoverTheme;
   source: 'openlibrary_manual' | 'googlebooks_manual';
+  hasAdaptation?: boolean;
+  tmdbId?: number;
+  movieTitle?: string;
+  releaseYear?: number | null;
+  director?: string | null;
+  moviePosterPath?: string | null;
+  leadActors?: string[];
+  leadCharacters?: string[];
 }
 
 export function normalizeIsbn13(raw: string): string | null {

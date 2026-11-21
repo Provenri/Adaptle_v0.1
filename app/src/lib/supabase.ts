@@ -80,6 +80,22 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
           typeof mutation.payload.publicationYear === 'number'
             ? mutation.payload.publicationYear
             : null,
+        tmdb_id: typeof mutation.payload.tmdbId === 'number' ? mutation.payload.tmdbId : null,
+        movie_title:
+          typeof mutation.payload.movieTitle === 'string' ? mutation.payload.movieTitle : null,
+        release_year:
+          typeof mutation.payload.releaseYear === 'number' ? mutation.payload.releaseYear : null,
+        director: typeof mutation.payload.director === 'string' ? mutation.payload.director : null,
+        movie_poster_path:
+          typeof mutation.payload.moviePosterPath === 'string'
+            ? mutation.payload.moviePosterPath
+            : null,
+        lead_actors: Array.isArray(mutation.payload.leadActors)
+          ? mutation.payload.leadActors
+          : null,
+        lead_characters: Array.isArray(mutation.payload.leadCharacters)
+          ? mutation.payload.leadCharacters
+          : null,
         number_of_pages:
           typeof mutation.payload.numberOfPages === 'number'
             ? mutation.payload.numberOfPages
@@ -244,7 +260,10 @@ export async function fetchTmdbProviders(tmdbId: number, region = 'DE'): Promise
   return payload as TmdbProviders;
 }
 
-export async function searchBookCatalog(query: string): Promise<BookCandidate[]> {
+export async function searchBookCatalog(
+  query: string,
+  adaptationsOnly = false
+): Promise<BookCandidate[]> {
   const normalized = query.trim();
   if (normalized.length < 2) return [];
 
@@ -254,8 +273,15 @@ export async function searchBookCatalog(query: string): Promise<BookCandidate[]>
     action === 'isbn'
       ? `isbn=${encodeURIComponent(isbn13)}`
       : `q=${encodeURIComponent(normalized)}`;
-  const payload = await invokeBookSearch(`?action=${action}&${parameter}`);
+  const payload = await invokeBookSearch(
+    `?action=${action}&${parameter}&adaptations_only=${adaptationsOnly ? 'true' : 'false'}`
+  );
   return payload.items;
+}
+
+export async function getSurpriseBook(): Promise<BookCandidate | null> {
+  const payload = await invokeBookSearch('?action=random');
+  return payload.items[0] ?? null;
 }
 
 async function invokeBookSearch(queryString: string): Promise<{ items: BookCandidate[] }> {

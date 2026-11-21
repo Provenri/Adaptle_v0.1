@@ -71,6 +71,8 @@ Repository layout:
 ### 1.6 My Library tab
 - Shelf chips (`To be read` / `Reading` / `Finished`) with counts, search, status filter.
 - Book cards: typographic cover, adaptation info (movie, year, streaming via `tmdb-proxy`), status dropdown.
+- Library filter: toggle between all books and only books with screen adaptations; the adaptation toggle composes with shelf status and text search.
+- **Play adaptation:** one-round practice quiz for saved adaptation books from the Library card; uses the same hints/reveal flow but never changes daily score or streak.
 - `+ Add Book`: Open Library text search + `expo-camera` ISBN barcode scan → `booksearch-proxy`; manual books get `tmdb_id = null`.
 - Empty state onboarding screen (per wireframe).
 
@@ -113,6 +115,14 @@ Repository layout:
 - Never apply experimental migrations directly to production.
 - Add new forward-only migrations; never rewrite migrations already deployed.
 - Test schema, RLS, functions, and content in staging before production.
+
+### Public privacy policy
+
+- Host the Expo Router `/privacy` route publicly through EAS Hosting.
+- Production URL: `https://adaptle.expo.app/privacy`.
+- Keep `/privacy` outside the Play/My Library tab navigator so browser hydration does not redirect it to `/`.
+- Verify the public route remains on `/privacy`, returns HTTP 200, and exposes the current contact email before each Play Console submission.
+- Redeploy after policy or disclosure changes.
 
 ### EAS environments
 

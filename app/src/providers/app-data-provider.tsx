@@ -32,8 +32,12 @@ type LibraryContextValue = {
   scores: DailyScore[];
   currentStreak: number;
   saveBook: (
-    candidate: Omit<BookCandidate, 'numberOfPages' | 'publicationYear' | 'subjects' | 'source'> & {
+    candidate: Omit<
+      BookCandidate,
+      'numberOfPages' | 'publicationYear' | 'subjects' | 'source' | 'tmdbId'
+    > & {
       publicationYear?: number | null;
+      tmdbId?: number | null;
     },
     status?: ShelfStatus
   ) => void;
@@ -136,6 +140,7 @@ function LibraryProvider({ children }: { children: ReactNode }) {
                 ? {
                     ...book,
                     ...candidate,
+                    tmdbId: candidate.tmdbId ?? book.tmdbId,
                     publicationYear: candidate.publicationYear ?? book.publicationYear,
                     status,
                   }
@@ -145,6 +150,7 @@ function LibraryProvider({ children }: { children: ReactNode }) {
           return [
             {
               ...candidate,
+              tmdbId: candidate.tmdbId ?? undefined,
               publicationYear: candidate.publicationYear ?? undefined,
               status,
             },

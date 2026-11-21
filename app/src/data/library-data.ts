@@ -20,6 +20,14 @@ export type BookCandidate = Omit<
   LibraryBook,
   'status' | 'movieTitle' | 'movieYear' | 'tmdbId' | 'moviePosterPath'
 > & {
+  hasAdaptation?: boolean;
+  tmdbId?: number;
+  movieTitle?: string;
+  releaseYear?: number | null;
+  director?: string | null;
+  moviePosterPath?: string | null;
+  leadActors?: string[];
+  leadCharacters?: string[];
   numberOfPages: number | null;
   publicationYear: number | null;
   subjects: readonly string[];
