@@ -14,8 +14,33 @@ const SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql';
  * book's P407. Film director (P57) and release year (P577) are fetched here
  * so LLM prompts never need TMDB-origin data. CC0 data.
  */
-export function buildSparqlQuery(options: { limit: number; englishOnly: boolean }): string {
+export function buildSparqlQuery(options: {
+  limit: number;
+  englishOnly: boolean;
+  popularFirst?: boolean;
+  filmYearFrom?: number;
+  filmYearTo?: number;
+}): string {
   const languageFilter = options.englishOnly ? '?film wdt:P364 wd:Q1860 .' : '';
+  const popularityBinding = options.popularFirst
+    ? '?book wikibase:sitelinks ?bookSitelinks .'
+    : '';
+  const popularityAggregate = options.popularFirst
+    ? '(MAX(?bookSitelinks) AS ?popularity)'
+    : '(0 AS ?popularity)';
+  const popularityOrder = options.popularFirst ? 'ORDER BY DESC(?popularity)' : '';
+  const releaseDateRange =
+    options.filmYearFrom !== undefined || options.filmYearTo !== undefined
+      ? '?film wdt:P577 ?filmDate .'
+      : 'OPTIONAL { ?film wdt:P577 ?filmDate . }';
+  const filmYearFilter = [
+    options.filmYearFrom !== undefined
+      ? `FILTER(YEAR(?filmDate) >= ${options.filmYearFrom})`
+      : '',
+    options.filmYearTo !== undefined
+      ? `FILTER(YEAR(?filmDate) <= ${options.filmYearTo})`
+      : '',
+  ].join('\n      ');
   return `
 SELECT ?book ?bookLabel ?authorLabel ?isbn13 ?film ?filmLabel ?director ?directorLabel ?tmdbId ?pubYear ?filmYear WHERE {
   {
@@ -26,6 +51,7 @@ SELECT ?book ?bookLabel ?authorLabel ?isbn13 ?film ?filmLabel ?director ?directo
            (SAMPLE(?dir) AS ?director)
            (MIN(YEAR(?pubDate)) AS ?pubYear)
            (MIN(YEAR(?filmDate)) AS ?filmYear)
+           ${popularityAggregate}
     WHERE {
       ?film wdt:P31 wd:Q11424 ;
             wdt:P144 ?book ;
@@ -37,11 +63,14 @@ SELECT ?book ?bookLabel ?authorLabel ?isbn13 ?film ?filmLabel ?director ?directo
       BIND(COALESCE(?isbnWork, ?isbnEdition) AS ?isbn)
       FILTER(BOUND(?isbn))
       FILTER(REGEX(REPLACE(?isbn, "[^0-9]", ""), "^[0-9]{13}$"))
+      ${popularityBinding}
       OPTIONAL { ?book wdt:P577 ?pubDate . }
       OPTIONAL { ?film wdt:P57 ?dir . }
-      OPTIONAL { ?film wdt:P577 ?filmDate . }
+      ${releaseDateRange}
+      ${filmYearFilter}
     }
     GROUP BY ?book ?film
+    ${popularityOrder}
     LIMIT ${options.limit}
   }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }

@@ -10,7 +10,7 @@ export interface FetchJsonOptions {
   retryDelayMs?: number;
   /** Return null instead of throwing for 404s. */
   allow404?: boolean;
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PATCH';
   /** JSON-serializable request body (POST only). */
   body?: unknown;
 }

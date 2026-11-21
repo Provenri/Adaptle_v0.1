@@ -20,9 +20,10 @@ export const HINT_SYSTEM_PROMPT =
 export function buildHintPrompt(bookTitle: string, author: string): string {
   return `You are creating factual, spoiler-free trivia hints for the book "${bookTitle}" by ${author} and its screen adaptation.
 
-Generate two short, original hints:
-1. setting_hint: A 4-to-8-word factual description of when and where the story takes place (e.g., "Dystopian 2019 Los Angeles" or "A Martian habitat in the near future").
-2. character_hint: A 6-to-12-word factual description of the two lead characters' roles without naming them or spoiling the ending (e.g., "A weary detective and an experimental android").
+Generate three short, original pieces:
+1. story_premise: A compelling spoiler-free premise in 14-to-24 words describing the central situation without naming outcomes, twists, or endings.
+2. setting_hint: A 4-to-8-word factual description of when and where the story takes place (e.g., "Dystopian 2019 Los Angeles" or "A Martian habitat in the near future").
+3. character_hint: A 6-to-12-word factual description of the two lead characters' roles without naming them or spoiling the ending (e.g., "A weary detective and an experimental android").
 
 STRICT RULES:
 - Use completely original, neutral wording—never copy publisher blurbs or movie synopses.
@@ -32,17 +33,22 @@ STRICT RULES:
 export const HINT_JSON_SCHEMA = {
   type: 'object',
   properties: {
+    story_premise: {
+      type: 'string',
+      description: '14-24 word spoiler-free central story premise',
+    },
     setting_hint: { type: 'string', description: '4-8 word factual when/where description' },
     character_hint: {
       type: 'string',
       description: '6-12 word factual description of the two lead character roles, unnamed',
     },
   },
-  required: ['setting_hint', 'character_hint'],
+  required: ['story_premise', 'setting_hint', 'character_hint'],
   additionalProperties: false,
 } as const;
 
 const HintResponseSchema = z.object({
+  story_premise: z.string().min(10).max(240),
   setting_hint: z.string().min(3).max(120),
   character_hint: z.string().min(3).max(160),
 });
@@ -70,6 +76,7 @@ export async function generateHints(options: {
       const hints = HintResponseSchema.parse(raw);
       return HintedBookSchema.parse({
         ...book,
+        storyPremise: hints.story_premise,
         settingHint: hints.setting_hint,
         characterHint: hints.character_hint,
       });

@@ -35,6 +35,8 @@ jest.mock('@/lib/local-storage', () => {
           movieYear: 1982,
           tmdbId: 78,
           moviePosterPath: '/63N9uy8nd9j7Eog2axPQ8lbr3Wj.jpg',
+          leadActors: ['Harrison Ford', 'Sean Young'],
+          leadCharacters: ['Rick Deckard', 'Rachael'],
         },
       ],
     ],
@@ -147,6 +149,11 @@ describe('tab screens', () => {
     expect(getByText(/ADAPTLE/)).toBeTruthy();
     expect(getByText("Which actors star in this book's screen adaptation?")).toBeTruthy();
     expect(getByText('Source book')).toBeTruthy();
+    expect(
+      getByText(
+        'A weary hunter questions what it means to be human while pursuing dangerous replicants.'
+      )
+    ).toBeTruthy();
   });
 
   it('shows the correct characters after a wrong answer', async () => {

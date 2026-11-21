@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { mmkvSupabaseStorage } from './local-storage';
 import type { OfflineMutation } from './offline-queue';
+import { PermanentMutationError } from './offline-queue';
 import type { DailyScore } from './scores';
 import type { BookCandidate, LibraryBook } from '@/data/library-data';
 
@@ -57,8 +58,17 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
   if (mutation.type === 'library-upsert') {
     const isbn13 = requiredString(mutation.payload.isbn13, 'isbn13');
     const status = requiredString(mutation.payload.status, 'status');
+    if (status === 'SNOOZE') {
+      const { error: legacyDeleteError } = await supabase
+        .from('user_library')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('isbn13', isbn13);
+      if (legacyDeleteError) throw legacyDeleteError;
+      return;
+    }
     if (!['TO_BE_READ', 'READING', 'FINISHED'].includes(status)) {
-      throw new Error(`Unsupported library status "${status}"`);
+      throw new PermanentMutationError(`Unsupported library status "${status}"`);
     }
 
     const { data: catalogItem, error: catalogReadError } = await supabase
@@ -101,7 +111,14 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
             ? mutation.payload.numberOfPages
             : null,
       });
-      if (catalogInsertError) throw catalogInsertError;
+      if (catalogInsertError && catalogInsertError.code !== '23505') {
+        if (isPermanentDatabaseError(catalogInsertError)) {
+          throw new PermanentMutationError(
+            `Invalid catalog mutation: ${catalogInsertError.message}`
+          );
+        }
+        throw catalogInsertError;
+      }
     }
 
     const { error: shelfError } = await supabase.from('user_library').upsert(
@@ -112,7 +129,12 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
       },
       { onConflict: 'user_id,isbn13' }
     );
-    if (shelfError) throw shelfError;
+    if (shelfError) {
+      if (isPermanentDatabaseError(shelfError)) {
+        throw new PermanentMutationError(`Invalid shelf mutation: ${shelfError.message}`);
+      }
+      throw shelfError;
+    }
     return;
   }
 
@@ -188,7 +210,7 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
   const { data, error } = await supabase
     .from('user_library')
     .select(
-      'isbn13,status,catalog_items(isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,movie_poster_path)'
+      'isbn13,status,catalog_items(isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise)'
     )
     .order('saved_at', { ascending: false });
   if (error) throw error;
@@ -209,6 +231,11 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
       movieYear: catalog.release_year ?? undefined,
       tmdbId: catalog.tmdb_id ?? undefined,
       moviePosterPath: catalog.movie_poster_path ?? null,
+      leadActors: Array.isArray(catalog.lead_actors) ? catalog.lead_actors : undefined,
+      leadCharacters: Array.isArray(catalog.lead_characters) ? catalog.lead_characters : undefined,
+      settingHint: catalog.setting_hint ?? undefined,
+      characterHint: catalog.character_hint ?? undefined,
+      storyPremise: catalog.story_premise ?? undefined,
     });
   }
 
@@ -284,6 +311,21 @@ export async function getSurpriseBook(): Promise<BookCandidate | null> {
   return payload.items[0] ?? null;
 }
 
+export async function resolvePracticeAdaptation(
+  isbn13: string,
+  title: string,
+  author: string
+): Promise<BookCandidate | null> {
+  const params = new URLSearchParams({
+    action: 'resolve-adaptation',
+    isbn: isbn13,
+    title,
+    author,
+  });
+  const payload = await invokeBookSearch(`?${params.toString()}`);
+  return payload.items[0] ?? null;
+}
+
 async function invokeBookSearch(queryString: string): Promise<{ items: BookCandidate[] }> {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error('Supabase is not configured');
@@ -315,9 +357,20 @@ async function invokeBookSearch(queryString: string): Promise<{ items: BookCandi
 
 function requiredString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.length === 0) {
-    throw new Error(`Offline mutation is missing valid "${field}"`);
+    throw new PermanentMutationError(`Offline mutation is missing valid "${field}"`);
   }
+
   return value;
+}
+
+function isPermanentDatabaseError(error: { code?: string }): boolean {
+  return (
+    error.code === '22001' ||
+    error.code === '23502' ||
+    error.code === '23514' ||
+    error.code === '22P02' ||
+    error.code === '42501'
+  );
 }
 
 function optionalString(value: unknown): string | null {

@@ -65,6 +65,7 @@ export type TmdbEnriched = z.infer<typeof TmdbEnrichedSchema>;
 export const HintedBookSchema = TmdbEnrichedSchema.extend({
   settingHint: z.string().min(1),
   characterHint: z.string().min(1),
+  storyPremise: z.string().min(1).max(240),
 });
 export type HintedBook = z.infer<typeof HintedBookSchema>;
 

@@ -12,6 +12,7 @@ import ViewShot, { captureRef, type ViewShotRef } from 'react-native-view-shot';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TypographicCover } from '@/components/typographic-cover';
+import { StoryPremise } from '@/components/story-premise';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -125,8 +126,9 @@ function WelcomeScreen({
           </ThemedText>
           {!completedScore ? (
             <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-              Match actors to screen adaptations, unlock clues when needed, then find the shared
-              connection in the bonus round. Save interesting books to your shelf as you play.
+              Match books to screen adaptations through their actors, unlock clues when needed,
+              then find the shared connection in the bonus round. Save interesting books to your
+              shelf as you play.
             </ThemedText>
           ) : null}
           <PrimaryButton
@@ -257,7 +259,7 @@ function DailyGame({
                       ? 'Daily complete'
                       : `Round ${state.roundIndex + 1} of 5`}
                 </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText type="small" themeColor="textSecondary" style={styles.bookMeta}>
                   Current round potential: {getRoundPotential(state.hintsUsed)} PTS
                 </ThemedText>
               </View>
@@ -419,7 +421,7 @@ function QuestionView({ details, hintsUsed, round, onHint, onAnswer }: QuestionV
             author={details.author}
             genre={details.genre}
             coverTheme={details.coverTheme}
-            width={126}
+            width={112}
           />
         </View>
         <View style={styles.prompt}>
@@ -437,12 +439,14 @@ function QuestionView({ details, hintsUsed, round, onHint, onAnswer }: QuestionV
             <ThemedText type="smallBold" style={styles.adaptationLabel}>
               Screen adaptation
             </ThemedText>
-            <ThemedText type="default" style={styles.adaptationName}>
+            <ThemedText type="small" style={styles.adaptationName}>
               {details.movieTitle}
             </ThemedText>
           </View>
         </View>
       </View>
+
+      <StoryPremise text={details.storyPremise} />
 
       <View style={styles.section}>
         <ThemedText type="smallBold" style={styles.sectionTitle}>
@@ -1031,7 +1035,7 @@ const styles = StyleSheet.create({
   },
   bookRow: {
     flexDirection: 'row',
-    gap: Spacing.three,
+    gap: Spacing.two,
     alignItems: 'flex-start',
   },
   coverColumn: {
@@ -1040,7 +1044,7 @@ const styles = StyleSheet.create({
   },
   prompt: {
     flex: 1,
-    gap: Spacing.two,
+    gap: Spacing.one,
     paddingTop: 26,
   },
   adaptationPrompt: {
@@ -1057,20 +1061,30 @@ const styles = StyleSheet.create({
   },
   adaptationLabel: {
     color: '#A84732',
+    fontSize: 12,
+    lineHeight: 16,
     letterSpacing: 0.7,
     textTransform: 'uppercase',
   },
   adaptationName: {
     color: '#173E32',
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '700',
   },
   kicker: {
     color: '#A84732',
+    fontSize: 12,
+    lineHeight: 16,
     textTransform: 'uppercase',
   },
   bookTitle: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 22,
+    lineHeight: 27,
+  },
+  bookMeta: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   section: {
     gap: Spacing.two,

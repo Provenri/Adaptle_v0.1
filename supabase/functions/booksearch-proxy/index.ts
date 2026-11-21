@@ -159,11 +159,87 @@ Deno.serve(async (req) => {
       return jsonResponse({ items: item ? [item] : [] });
     }
 
+    if (action === 'resolve-adaptation') {
+      const isbn13 = normalizeIsbn13(url.searchParams.get('isbn') ?? '');
+      const title = url.searchParams.get('title')?.trim();
+      const author = url.searchParams.get('author')?.trim();
+      if (!isbn13 && (!title || !author)) {
+        return errorResponse('isbn or title and author are required', 400);
+      }
+      const candidate = isbn13 ? await lookupKnownCatalogAdaptationByIsbn(isbn13) : null;
+      const resolved = candidate ??
+        (title && author ? await lookupKnownCatalogAdaptation(title, author) : null);
+      return jsonResponse({ items: resolved ? [resolved] : [] });
+    }
+
     return errorResponse('action must be "search" or "isbn"', 400);
   } catch (_error) {
     return errorResponse('book lookup failed', 502);
   }
 });
+
+async function lookupKnownCatalogAdaptationByIsbn(
+  isbn13: string,
+): Promise<BookCandidate | null> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceKey) return null;
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/catalog_items?isbn13=eq.${isbn13}&tmdb_id=not.is.null&select=*`,
+    { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+  );
+  if (!response.ok) return null;
+  const row = (await response.json())[0];
+  return row ? catalogRowToCandidate(row) : null;
+}
+
+async function lookupKnownCatalogAdaptation(
+  title: string,
+  author: string,
+): Promise<BookCandidate | null> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceKey) return null;
+  const url = new URL(`${supabaseUrl}/rest/v1/catalog_items`);
+  url.searchParams.set('book_title', `ilike.*${title.replace(/^the /i, '')}*`);
+  url.searchParams.set('author', `ilike.*${author.trim().split(/\s+/).at(-1) ?? ''}*`);
+  url.searchParams.set('tmdb_id', 'not.is.null');
+  url.searchParams.set('select', '*');
+  url.searchParams.set('limit', '1');
+  const response = await fetch(url, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+  });
+  if (!response.ok) return null;
+  const row = (await response.json())[0];
+  return row ? catalogRowToCandidate(row) : null;
+}
+
+function catalogRowToCandidate(row: Record<string, unknown>): BookCandidate {
+  return {
+    isbn13: String(row.isbn13),
+    title: String(row.book_title),
+    author: String(row.author),
+    publicationYear: typeof row.publication_year === 'number' ? row.publication_year : null,
+    numberOfPages: typeof row.number_of_pages === 'number' ? row.number_of_pages : null,
+    genre: typeof row.genre === 'string' ? row.genre : null,
+    coverTheme: classifyCover(row.genre ? [String(row.genre)] : []).coverTheme,
+    subjects: row.genre ? [String(row.genre)] : [],
+    source: 'openlibrary_manual',
+    hasAdaptation: true,
+    tmdbId: Number(row.tmdb_id),
+    movieTitle: row.movie_title ? String(row.movie_title) : undefined,
+    releaseYear: typeof row.release_year === 'number' ? row.release_year : null,
+    director: row.director ? String(row.director) : null,
+    moviePosterPath: row.movie_poster_path ? String(row.movie_poster_path) : null,
+    leadActors: Array.isArray(row.lead_actors) ? row.lead_actors as string[] : undefined,
+    leadCharacters: Array.isArray(row.lead_characters)
+      ? row.lead_characters as string[]
+      : undefined,
+    settingHint: row.setting_hint ? String(row.setting_hint) : undefined,
+    characterHint: row.character_hint ? String(row.character_hint) : undefined,
+    storyPremise: row.story_premise ? String(row.story_premise) : undefined,
+  };
+}
 
 async function randomAdaptation(): Promise<BookCandidate | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -171,7 +247,7 @@ async function randomAdaptation(): Promise<BookCandidate | null> {
   if (!supabaseUrl || !serviceKey) return null;
 
   const countResponse = await fetch(
-    `${supabaseUrl}/rest/v1/catalog_items?select=isbn13&tmdb_id=not.is.null&scheduled_date=not.is.null`,
+    `${supabaseUrl}/rest/v1/catalog_items?select=isbn13`,
     {
       headers: {
         apikey: serviceKey,
@@ -188,7 +264,7 @@ async function randomAdaptation(): Promise<BookCandidate | null> {
 
   const offset = Math.floor(Math.random() * count);
   const response = await fetch(
-    `${supabaseUrl}/rest/v1/catalog_items?tmdb_id=not.is.null&scheduled_date=not.is.null&select=isbn13,book_title,author,genre,cover_theme,publication_year,number_of_pages&limit=1&offset=${offset}`,
+    `${supabaseUrl}/rest/v1/catalog_items?select=isbn13,book_title,author,genre,cover_theme,publication_year,number_of_pages,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise&limit=1&offset=${offset}`,
     {
       headers: {
         apikey: serviceKey,
@@ -209,6 +285,16 @@ async function randomAdaptation(): Promise<BookCandidate | null> {
     genre: row.genre,
     coverTheme: row.cover_theme,
     source: 'openlibrary_manual',
-    hasAdaptation: true,
+    hasAdaptation: typeof row.tmdb_id === 'number',
+    tmdbId: row.tmdb_id ?? undefined,
+    movieTitle: row.movie_title ?? undefined,
+    releaseYear: row.release_year ?? null,
+    director: row.director ?? null,
+    moviePosterPath: row.movie_poster_path ?? null,
+    leadActors: row.lead_actors ?? undefined,
+    leadCharacters: row.lead_characters ?? undefined,
+    settingHint: row.setting_hint ?? undefined,
+    characterHint: row.character_hint ?? undefined,
+    storyPremise: row.story_premise ?? undefined,
   };
 }

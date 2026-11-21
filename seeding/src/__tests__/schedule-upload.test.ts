@@ -35,6 +35,7 @@ function makeBook(isbn13: string): HintedBook {
     leadActors: ['X', 'Y'],
     settingHint: 'setting',
     characterHint: 'characters',
+    storyPremise: 'Two strangers pursue a dangerous truth.',
   };
 }
 
@@ -79,16 +80,16 @@ describe('scheduleBooks', () => {
 });
 
 describe('scheduleThreads', () => {
-  it('never schedules a thread before both its items are published', () => {
+  it('waits three days after both items are published', () => {
     const books = Array.from({ length: 10 }, (_, i) => makeBook(isbn(i)));
     const { scheduled } = scheduleBooks(books, '2026-12-01');
     const dates = new Map(scheduled.map((s) => [s.book.isbn13, s.scheduledDate]));
 
     // isbn(7) is published on day 2 -> thread can't run on day 1.
     const threads = [makeThread(isbn(0), isbn(7))];
-    const plan = scheduleThreads(threads, dates, '2026-12-01', 2);
+    const plan = scheduleThreads(threads, dates, '2026-12-01', 5);
     expect(plan.scheduled).toHaveLength(1);
-    expect(plan.scheduled[0]?.scheduledDate).toBe('2026-12-02');
+    expect(plan.scheduled[0]?.scheduledDate).toBe('2026-12-05');
   });
 
   it('assigns at most one thread per day and reports unassignable threads', () => {
@@ -101,8 +102,8 @@ describe('scheduleThreads', () => {
       makeThread(isbn(2), isbn(3)),
       makeThread(isbn(0), isbn(99)), // isbn(99) never scheduled -> unusable
     ];
-    const plan = scheduleThreads(threads, dates, '2026-12-01', 1);
-    expect(plan.scheduled).toHaveLength(1); // only one day available
+    const plan = scheduleThreads(threads, dates, '2026-12-01', 4);
+    expect(plan.scheduled).toHaveLength(1);
     expect(plan.unassigned).toHaveLength(2);
   });
 });

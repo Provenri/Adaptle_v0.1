@@ -10,6 +10,7 @@ type RoundDetails = {
   coverTheme: CoverTheme;
   settingHint: string;
   characterHint: string;
+  storyPremise: string;
   movieTitle: string;
   releaseYear: number;
   director: string;
@@ -94,6 +95,7 @@ export const demoRoundDetails: Record<string, RoundDetails> = {
     coverTheme: 'scifi_teal',
     settingHint: 'Dystopian 2019 Los Angeles',
     characterHint: 'A weary detective and an experimental android',
+    storyPremise: 'A weary hunter questions what it means to be human while pursuing dangerous replicants.',
     movieTitle: 'Blade Runner',
     releaseYear: 1982,
     director: 'Ridley Scott',
@@ -111,6 +113,7 @@ export const demoRoundDetails: Record<string, RoundDetails> = {
     coverTheme: 'fantasy_plum',
     settingHint: 'A far-future desert planet',
     characterHint: 'A gifted heir and a desert freedom fighter',
+    storyPremise: 'A young heir is drawn into a struggle over the fate of a desert world.',
     movieTitle: 'Dune: Part One',
     releaseYear: 2021,
     director: 'Denis Villeneuve',
@@ -128,6 +131,7 @@ export const demoRoundDetails: Record<string, RoundDetails> = {
     coverTheme: 'literary_terracotta',
     settingHint: 'Jazz Age New York society',
     characterHint: 'A mysterious millionaire and a watchful neighbor',
+    storyPremise: 'A reserved neighbor is pulled into the glittering hopes and secrets of a wealthy outsider.',
     movieTitle: 'The Great Gatsby',
     releaseYear: 2013,
     director: 'Baz Luhrmann',
@@ -145,6 +149,7 @@ export const demoRoundDetails: Record<string, RoundDetails> = {
     coverTheme: 'scifi_teal',
     settingHint: 'A near-future Mars mission',
     characterHint: 'A stranded botanist and a rescue commander',
+    storyPremise: 'A stranded astronaut must improvise a survival plan while Earth coordinates a distant rescue.',
     movieTitle: 'The Martian',
     releaseYear: 2015,
     director: 'Ridley Scott',
@@ -162,6 +167,7 @@ export const demoRoundDetails: Record<string, RoundDetails> = {
     coverTheme: 'thriller_navy',
     settingHint: 'A storm-bound island asylum',
     characterHint: 'A haunted marshal and his methodical partner',
+    storyPremise: 'Two investigators uncover unsettling secrets while stranded at an isolated island hospital.',
     movieTitle: 'Shutter Island',
     releaseYear: 2010,
     director: 'Martin Scorsese',

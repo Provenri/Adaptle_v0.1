@@ -4,22 +4,58 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { TypographicCover } from './typographic-cover';
+import { StoryPremise } from './story-premise';
 import { ThemedText } from './themed-text';
 
 import { Spacing } from '@/constants/theme';
 import { fetchAdaptationPractice } from '@/lib/daily-puzzle';
+import { resolvePracticeAdaptation } from '@/lib/supabase';
 import { getNameInitials, getRoundPotential } from '@/lib/game-engine';
 
-export function AdaptationPractice({ isbn13, onClose }: { isbn13: string; onClose: () => void }) {
+export function AdaptationPractice({
+  isbn13,
+  title,
+  author,
+  tmdbId,
+  storyPremise,
+  onClose,
+}: {
+  isbn13: string;
+  title: string;
+  author: string;
+  tmdbId?: number;
+  storyPremise?: string;
+  onClose: () => void;
+}) {
   const query = useQuery({
-    queryKey: ['adaptation-practice', isbn13],
-    queryFn: () => fetchAdaptationPractice(isbn13),
+    queryKey: ['adaptation-practice', isbn13, title, author, tmdbId],
+    queryFn: async () => {
+      try {
+        return await fetchAdaptationPractice(isbn13, title, author, tmdbId);
+      } catch {
+        const resolved = await resolvePracticeAdaptation(isbn13, title, author);
+        if (!resolved) throw new Error('This book does not have a playable screen adaptation.');
+        return fetchAdaptationPractice(
+          resolved.isbn13,
+          resolved.title,
+          resolved.author,
+          resolved.tmdbId,
+          resolved
+        );
+      }
+    },
   });
   const [hintsUsed, setHintsUsed] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
 
   if (query.isPending) {
-    return <PracticeStatus text="Preparing adaptation practice…" onClose={onClose} />;
+    return (
+      <PracticeStatus
+        text="Preparing adaptation practice…"
+        storyPremise={storyPremise}
+        onClose={onClose}
+      />
+    );
   }
   if (query.isError || !query.data) {
     return (
@@ -94,6 +130,7 @@ export function AdaptationPractice({ isbn13, onClose }: { isbn13: string; onClos
           </ThemedText>
         </View>
       </View>
+      <StoryPremise text={details.storyPremise} />
       {[
         { title: 'Year and setting', value: `${details.releaseYear} · ${details.settingHint}` },
         { title: 'Character roles', value: details.characterHint },
@@ -131,12 +168,21 @@ export function AdaptationPractice({ isbn13, onClose }: { isbn13: string; onClos
   );
 }
 
-function PracticeStatus({ text, onClose }: { text: string; onClose: () => void }) {
+function PracticeStatus({
+  text,
+  storyPremise,
+  onClose,
+}: {
+  text: string;
+  storyPremise?: string;
+  onClose: () => void;
+}) {
   return (
     <View style={styles.status}>
       <ThemedText type="subtitle" style={styles.centered}>
         {text}
       </ThemedText>
+      {storyPremise ? <StoryPremise text={storyPremise} /> : null}
       <PracticeButton label="Close" onPress={onClose} />
     </View>
   );

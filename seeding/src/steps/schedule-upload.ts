@@ -22,6 +22,44 @@ export interface ScheduledBook {
   scheduledDate: string;
 }
 
+export function alignBooksToThreads(
+  books: HintedBook[],
+  threads: CommonThread[]
+): HintedBook[] {
+  const dayCount = Math.floor(books.length / BOOKS_PER_DAY);
+  if (dayCount === 0 || threads.length < dayCount) return books;
+
+  const remaining = new Map(books.map((book) => [book.isbn13, book]));
+  const ordered: HintedBook[] = [];
+  const usedThreads = new Set<CommonThread>();
+
+  for (let day = 0; day < dayCount; day++) {
+    const thread = threads.find(
+      (candidate) =>
+        !usedThreads.has(candidate) &&
+        (remaining.has(candidate.itemAIsbn13) || remaining.has(candidate.itemBIsbn13))
+    );
+    if (thread) {
+      usedThreads.add(thread);
+      for (const isbn of [thread.itemAIsbn13, thread.itemBIsbn13]) {
+        const book = remaining.get(isbn);
+        if (book) {
+          ordered.push(book);
+          remaining.delete(isbn);
+        }
+      }
+    }
+
+    const filler = [...remaining.values()].slice(0, BOOKS_PER_DAY - (ordered.length % BOOKS_PER_DAY));
+    for (const book of filler) {
+      ordered.push(book);
+      remaining.delete(book.isbn13);
+    }
+  }
+
+  return [...ordered, ...remaining.values()];
+}
+
 /**
  * Chunks books into days of exactly BOOKS_PER_DAY. Only complete days are
  * scheduled — leftovers are excluded (they stay in the checkpoint for a
@@ -52,7 +90,8 @@ export interface ScheduledThread {
  * Assigns one bonus thread per puzzle day. A thread may only run once both of
  * its catalog items are published (RLS hides future-scheduled rows), so each
  * thread's earliest eligible day is the later of its two items' dates.
- * Greedy: each day takes the eligible thread with the earliest constraint.
+ * Greedy: each day takes the eligible thread with the earliest constraint,
+ * with a three-day exposure window before a book may appear in a bonus.
  */
 export function scheduleThreads(
   threads: CommonThread[],
@@ -65,7 +104,8 @@ export function scheduleThreads(
       const dateA = bookDateByIsbn.get(thread.itemAIsbn13);
       const dateB = bookDateByIsbn.get(thread.itemBIsbn13);
       if (!dateA || !dateB) return null; // item not scheduled -> can't use
-      return { thread, minDate: dateA > dateB ? dateA : dateB };
+      const latestBookDate = dateA > dateB ? dateA : dateB;
+      return { thread, minDate: addDays(latestBookDate, 3) };
     })
     .filter((t): t is { thread: CommonThread; minDate: string } => t !== null)
     .sort((a, b) => a.minDate.localeCompare(b.minDate));
@@ -109,6 +149,7 @@ export function toCatalogRow(item: ScheduledBook): Record<string, unknown> {
     lead_actors: book.leadActors,
     setting_hint: book.settingHint,
     character_hint: book.characterHint,
+    story_premise: book.storyPremise,
     scheduled_date: scheduledDate,
   };
 }
@@ -157,7 +198,10 @@ export function defaultStartDate(now = new Date()): string {
   return addDays(berlinToday, 1);
 }
 
-export async function scheduleAndUpload(options: { startDate?: string }): Promise<void> {
+export async function scheduleAndUpload(options: {
+  startDate?: string;
+  dryRun?: boolean;
+}): Promise<void> {
   const supabaseUrl = requireEnv('SUPABASE_URL').replace(/\/$/, '');
   const serviceKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
   const startDate = options.startDate ?? defaultStartDate();
@@ -168,7 +212,8 @@ export async function scheduleAndUpload(options: { startDate?: string }): Promis
   const books = readCheckpoint('04-hinted-books', HintedBookSchema);
   const threads = readCheckpoint('05-common-threads', CommonThreadSchema);
 
-  const { scheduled, leftover } = scheduleBooks(books, startDate);
+  const alignedBooks = alignBooksToThreads(books, threads);
+  const { scheduled, leftover } = scheduleBooks(alignedBooks, startDate);
   const dayCount = scheduled.length / BOOKS_PER_DAY;
   const bookDateByIsbn = new Map(scheduled.map((s) => [s.book.isbn13, s.scheduledDate]));
   const threadPlan = scheduleThreads(threads, bookDateByIsbn, startDate, dayCount);
@@ -182,16 +227,18 @@ export async function scheduleAndUpload(options: { startDate?: string }): Promis
       (threadPlan.unassigned.length ? ` (${threadPlan.unassigned.length} unassigned)` : '')
   );
 
-  await upsert(supabaseUrl, serviceKey, 'catalog_items', 'isbn13', scheduled.map(toCatalogRow));
-  console.log('catalog_items upserted.');
-  await upsert(
-    supabaseUrl,
-    serviceKey,
-    'common_thread_pairs',
-    'scheduled_date',
-    threadPlan.scheduled.map(toThreadRow)
-  );
-  console.log('common_thread_pairs upserted.');
+  if (!options.dryRun) {
+    await upsert(supabaseUrl, serviceKey, 'catalog_items', 'isbn13', scheduled.map(toCatalogRow));
+    console.log('catalog_items upserted.');
+    await upsert(
+      supabaseUrl,
+      serviceKey,
+      'common_thread_pairs',
+      'scheduled_date',
+      threadPlan.scheduled.map(toThreadRow)
+    );
+    console.log('common_thread_pairs upserted.');
+  }
 
   const manifest = {
     startDate,
@@ -199,7 +246,8 @@ export async function scheduleAndUpload(options: { startDate?: string }): Promis
     booksUploaded: scheduled.length,
     threadsUploaded: threadPlan.scheduled.length,
     leftoverBooks: leftover.map((b) => b.isbn13),
-    uploadedAt: new Date().toISOString(),
+    applied: !options.dryRun,
+    uploadedAt: options.dryRun ? null : new Date().toISOString(),
   };
   const path = writeCheckpoint('06-upload-manifest', [manifest]);
   console.log(`Upload manifest written: ${path}`);

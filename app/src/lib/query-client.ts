@@ -2,7 +2,7 @@ import { QueryClient, dehydrate, hydrate } from '@tanstack/react-query';
 
 import { localStorage } from './local-storage';
 
-const QUERY_CACHE_KEY = 'query-cache-v1';
+const QUERY_CACHE_KEY = 'query-cache-v2';
 
 export const queryClient = new QueryClient({
   defaultOptions: {

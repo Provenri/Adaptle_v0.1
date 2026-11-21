@@ -14,8 +14,32 @@ export type OfflineMutation =
 
 export type OfflineMutationHandler = (mutation: OfflineMutation) => Promise<void>;
 
+export class PermanentMutationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PermanentMutationError';
+  }
+}
+
 export function getOfflineMutations(): OfflineMutation[] {
-  return localStorage.get<OfflineMutation[]>(QUEUE_KEY) ?? [];
+  const stored = localStorage.get<OfflineMutation[]>(QUEUE_KEY) ?? [];
+  const migrated = stored.map((mutation): OfflineMutation =>
+    mutation.type === 'library-upsert' && mutation.payload.status === 'SNOOZE'
+      ? {
+          ...mutation,
+          type: 'library-delete',
+          payload: { isbn13: mutation.payload.isbn13 },
+        }
+      : mutation
+  );
+  const valid = migrated.filter(isValidMutation);
+  if (
+    valid.length !== stored.length ||
+    valid.some((mutation, index) => mutation !== stored[index])
+  ) {
+    localStorage.set(QUEUE_KEY, valid);
+  }
+  return valid;
 }
 
 export function enqueueOfflineMutation(
@@ -45,7 +69,11 @@ export async function flushOfflineMutations(handler: OfflineMutationHandler): Pr
       await handler(mutation);
       synced += 1;
     } catch (error) {
-      console.error(`Offline mutation "${mutation.id}" will be retried.`, error);
+      if (error instanceof PermanentMutationError) {
+        console.warn(`Discarding invalid offline mutation "${mutation.id}".`, error);
+        continue;
+      }
+      console.warn(`Offline mutation "${mutation.id}" will be retried.`, error);
       pending.push(mutation, ...queue.slice(queue.indexOf(mutation) + 1));
       break;
     }
@@ -57,6 +85,21 @@ export async function flushOfflineMutations(handler: OfflineMutationHandler): Pr
 
 export function clearOfflineMutations(): void {
   localStorage.remove(QUEUE_KEY);
+}
+
+function isValidMutation(mutation: OfflineMutation): boolean {
+  if (!mutation || typeof mutation.id !== 'string' || typeof mutation.createdAt !== 'number') {
+    return false;
+  }
+  if (!['library-upsert', 'library-delete', 'daily-score-upsert'].includes(mutation.type)) {
+    return false;
+  }
+  return (
+    mutation.type === 'daily-score-upsert' ||
+    (typeof mutation.payload?.isbn13 === 'string' &&
+      mutation.payload.isbn13.length === 13 &&
+      (mutation.type === 'library-delete' || typeof mutation.payload.status === 'string'))
+  );
 }
 
 function mutationKey(mutation: OfflineMutation): string {

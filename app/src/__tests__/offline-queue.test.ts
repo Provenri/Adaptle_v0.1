@@ -1,4 +1,5 @@
 import {
+  PermanentMutationError,
   clearOfflineMutations,
   enqueueOfflineMutation,
   flushOfflineMutations,
@@ -103,5 +104,43 @@ describe('offline mutation queue', () => {
     });
 
     expect(getOfflineMutations().map((mutation) => mutation.type)).toEqual(['library-delete']);
+  });
+
+  it('migrates queued legacy Snooze writes into shelf deletions', () => {
+    enqueueOfflineMutation({
+      id: 'legacy-snooze',
+      type: 'library-upsert',
+      payload: { isbn13: '9780000000001', status: 'SNOOZE' },
+    });
+
+    expect(getOfflineMutations()).toEqual([
+      expect.objectContaining({
+        type: 'library-delete',
+        payload: { isbn13: '9780000000001' },
+      }),
+    ]);
+  });
+
+  it('discards malformed and permanently invalid mutations without blocking later work', async () => {
+    enqueueOfflineMutation({
+      id: 'bad',
+      type: 'library-upsert',
+      payload: { isbn13: '9780000000001', status: 'INVALID' },
+    });
+    enqueueOfflineMutation({
+      id: 'valid',
+      type: 'library-upsert',
+      payload: { isbn13: '9780000000002', status: 'READING' },
+    });
+    const attempted: string[] = [];
+
+    const synced = await flushOfflineMutations(async (mutation) => {
+      attempted.push(mutation.id);
+      if (mutation.id === 'bad') throw new PermanentMutationError('invalid status');
+    });
+
+    expect(synced).toBe(1);
+    expect(attempted).toEqual(['bad', 'valid']);
+    expect(getOfflineMutations()).toEqual([]);
   });
 });

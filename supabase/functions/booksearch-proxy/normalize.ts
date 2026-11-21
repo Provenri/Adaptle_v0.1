@@ -25,6 +25,9 @@ export interface BookCandidate {
   moviePosterPath?: string | null;
   leadActors?: string[];
   leadCharacters?: string[];
+  settingHint?: string;
+  characterHint?: string;
+  storyPremise?: string;
 }
 
 export function normalizeIsbn13(raw: string): string | null {

@@ -1,6 +1,7 @@
 import type { CoverTheme } from '@/components/typographic-cover';
 
 import type { DailyPuzzle, GameChoice } from './game-engine';
+import type { BookCandidate } from '@/data/library-data';
 import { shuffleChoices } from './game-engine';
 import { currentPuzzleDate } from './scores';
 import { getSupabaseClient, initializeAnonymousSession } from './supabase';
@@ -21,6 +22,7 @@ export type CatalogRow = {
   lead_actors: unknown;
   setting_hint: string | null;
   character_hint: string | null;
+  story_premise: string | null;
 };
 
 export type ThreadRow = {
@@ -44,6 +46,7 @@ export type DailyRoundDetails = {
   coverTheme: CoverTheme;
   settingHint: string;
   characterHint: string;
+  storyPremise: string;
   movieTitle: string;
   releaseYear: number;
   director: string;
@@ -85,19 +88,50 @@ export type AdaptationPractice = {
   correctChoiceId: string;
 };
 
-export async function fetchAdaptationPractice(isbn13: string): Promise<AdaptationPractice> {
+export async function fetchAdaptationPractice(
+  isbn13: string,
+  title?: string,
+  author?: string,
+  tmdbId?: number,
+  resolvedTarget?: BookCandidate
+): Promise<AdaptationPractice> {
   const supabase = getSupabaseClient();
   if (!supabase) throw new PuzzleUnavailableError('Adaptle is not connected to Supabase yet.');
   await initializeAnonymousSession();
 
   const select =
-    'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint';
-  const { data: target, error: targetError } = await supabase
+    'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise';
+  let { data: target, error: targetError } = await supabase
     .from('catalog_items')
     .select(select)
     .eq('isbn13', isbn13)
     .maybeSingle();
   if (targetError) throw targetError;
+  if (!target && resolvedTarget) {
+    target = catalogRowFromCandidate(resolvedTarget);
+  }
+  if ((!target || !target.tmdb_id) && tmdbId) {
+    const byTmdb = await supabase
+      .from('catalog_items')
+      .select(select)
+      .eq('tmdb_id', tmdbId)
+      .limit(1)
+      .maybeSingle();
+    if (byTmdb.error) throw byTmdb.error;
+    target = byTmdb.data;
+  }
+  if ((!target || !target.tmdb_id) && title && author) {
+    const fallback = await supabase
+      .from('catalog_items')
+      .select(select)
+      .ilike('book_title', `%${normalizeCatalogLabel(title).replace(/^the /i, '')}%`)
+      .ilike('author', `%${normalizeCatalogLabel(author).split(/\s+/).at(-1) ?? ''}%`)
+      .not('tmdb_id', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    if (fallback.error) throw fallback.error;
+    target = fallback.data;
+  }
   if (!target || !target.tmdb_id) {
     throw new PuzzleUnavailableError('This book does not have a playable screen adaptation.');
   }
@@ -154,7 +188,7 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const { data: rows, error: booksError } = await supabase
     .from('catalog_items')
     .select(
-      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint'
+      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise'
     )
     .eq('scheduled_date', puzzleDate)
     .order('isbn13', { ascending: true });
@@ -168,7 +202,7 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const books = rows as CatalogRow[];
   validateBooks(books);
 
-  const { data: thread, error: threadError } = await supabase
+  let { data: thread, error: threadError } = await supabase
     .from('common_thread_pairs')
     .select(
       'pair_mode,item_a_isbn13,item_b_isbn13,connection_category,connection_detail,decoy_1_category,decoy_1_detail,decoy_2_category,decoy_2_detail'
@@ -176,6 +210,19 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
     .eq('scheduled_date', puzzleDate)
     .maybeSingle();
   if (threadError) throw threadError;
+  if (!thread) {
+    const fallback = await supabase
+      .from('common_thread_pairs')
+      .select(
+        'pair_mode,item_a_isbn13,item_b_isbn13,connection_category,connection_detail,decoy_1_category,decoy_1_detail,decoy_2_category,decoy_2_detail'
+      )
+      .lte('scheduled_date', puzzleDate)
+      .order('scheduled_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (fallback.error) throw fallback.error;
+    thread = fallback.data;
+  }
   if (!thread) {
     throw new PuzzleUnavailableError(
       "Today's five books are published, but its common-thread bonus is not ready yet."
@@ -187,7 +234,7 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const { data: bonusRows, error: bonusError } = await supabase
     .from('catalog_items')
     .select(
-      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint'
+      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise'
     )
     .in('isbn13', bonusIsbns);
   if (bonusError) throw bonusError;
@@ -289,6 +336,9 @@ function toRoundDetails(book: CatalogRow): DailyRoundDetails {
     characterHint:
       optionalText(book.character_hint) ??
       `Two leads portrayed by ${readStringArray(book.lead_actors, 'lead_actors', 2).join(' and ')}`,
+    storyPremise:
+      optionalText(book.story_premise) ??
+      `${optionalText(book.setting_hint) ?? 'A memorable story'} shaped by ${optionalText(book.character_hint)?.toLowerCase() ?? 'two compelling leads'}.`,
     movieTitle: requireText(book.movie_title, 'movie_title'),
     releaseYear: requireNumber(book.release_year, 'release_year'),
     director: requireText(book.director, 'director'),
@@ -308,6 +358,27 @@ function toBonusItem(book: CatalogRow, pairMode: ThreadRow['pair_mode'], index: 
     coverTheme: book.cover_theme,
     movieTitle: book.movie_title,
     moviePosterPath: book.movie_poster_path,
+  };
+}
+
+function catalogRowFromCandidate(candidate: BookCandidate): CatalogRow {
+  return {
+    isbn13: candidate.isbn13,
+    book_title: candidate.title,
+    author: candidate.author,
+    publication_year: candidate.publicationYear,
+    genre: candidate.genre,
+    cover_theme: candidate.coverTheme,
+    tmdb_id: candidate.tmdbId ?? null,
+    movie_title: candidate.movieTitle ?? null,
+    release_year: candidate.releaseYear ?? null,
+    director: candidate.director ?? null,
+    movie_poster_path: candidate.moviePosterPath ?? null,
+    lead_actors: candidate.leadActors ?? null,
+    lead_characters: candidate.leadCharacters ?? null,
+    setting_hint: candidate.settingHint ?? null,
+    character_hint: candidate.characterHint ?? null,
+    story_premise: candidate.storyPremise ?? null,
   };
 }
 
@@ -343,6 +414,10 @@ function requireText(value: unknown, field: string): string {
 
 function optionalText(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function normalizeCatalogLabel(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
 }
 
 function requireNumber(value: unknown, field: string): number {

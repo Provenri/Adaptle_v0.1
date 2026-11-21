@@ -32,6 +32,7 @@ const books: CatalogRow[] = Array.from({ length: 5 }, (_, index) => ({
   lead_actors: [`Actor ${index + 1}`, `Actor B${index + 1}`],
   setting_hint: `Setting ${index + 1}`,
   character_hint: `Characters ${index + 1}`,
+  story_premise: `A compelling premise for book ${index + 1}.`,
 }));
 
 const thread: ThreadRow = {

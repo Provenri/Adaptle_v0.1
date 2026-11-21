@@ -45,7 +45,13 @@ export default function LibraryScreen() {
   const [query, setQuery] = useState('');
   const [addBookOpen, setAddBookOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
-  const [practiceIsbn13, setPracticeIsbn13] = useState<string | null>(null);
+  const [practiceBook, setPracticeBook] = useState<{
+    isbn13: string;
+    title: string;
+    author: string;
+    tmdbId?: number;
+    storyPremise?: string;
+  } | null>(null);
   const counts = useMemo(
     () => ({
       TO_BE_READ: books.filter((book) => book.status === 'TO_BE_READ').length,
@@ -182,7 +188,18 @@ export default function LibraryScreen() {
                       ]
                     )
                   }
-                  onPractice={book.tmdbId ? () => setPracticeIsbn13(book.isbn13) : undefined}
+                  onPractice={
+                    book.tmdbId || book.movieTitle
+                      ? () =>
+                          setPracticeBook({
+                            isbn13: book.isbn13,
+                            title: book.title,
+                            author: book.author,
+                            tmdbId: book.tmdbId,
+                            storyPremise: book.storyPremise,
+                          })
+                      : undefined
+                  }
                 />
               ))}
             </View>
@@ -209,12 +226,19 @@ export default function LibraryScreen() {
         </Modal>
         <Modal
           animationType="slide"
-          onRequestClose={() => setPracticeIsbn13(null)}
+          onRequestClose={() => setPracticeBook(null)}
           presentationStyle="fullScreen"
-          visible={practiceIsbn13 !== null}>
-          {practiceIsbn13 ? (
+          visible={practiceBook !== null}>
+          {practiceBook ? (
             <SafeAreaView style={styles.modalSafeArea}>
-              <AdaptationPractice isbn13={practiceIsbn13} onClose={() => setPracticeIsbn13(null)} />
+              <AdaptationPractice
+                isbn13={practiceBook.isbn13}
+                title={practiceBook.title}
+                author={practiceBook.author}
+                tmdbId={practiceBook.tmdbId}
+                storyPremise={practiceBook.storyPremise}
+                onClose={() => setPracticeBook(null)}
+              />
             </SafeAreaView>
           ) : null}
         </Modal>
@@ -607,6 +631,14 @@ function AddBookModal({
                       <ThemedText type="small" themeColor="textSecondary">
                         {candidate.author}
                       </ThemedText>
+                      {candidate.hasAdaptation ? (
+                        <ThemedText
+                          numberOfLines={1}
+                          type="smallBold"
+                          style={styles.adaptationBadge}>
+                          🎬 Screen adaptation
+                        </ThemedText>
+                      ) : null}
                     </View>
                     <ThemedText type="smallBold" style={styles.addResult}>
                       + Add
@@ -890,6 +922,15 @@ const styles = StyleSheet.create({
     padding: Spacing.two,
   },
   resultCopy: { flex: 1, gap: Spacing.one },
+  adaptationBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E6F1ED',
+    borderRadius: 999,
+    color: '#117579',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    flexShrink: 0,
+  },
   addResult: { color: '#117579', padding: Spacing.two },
   cameraContainer: { backgroundColor: '#000000', flex: 1 },
   cameraOverlay: {

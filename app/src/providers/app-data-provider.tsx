@@ -111,7 +111,7 @@ function LibraryProvider({ children }: { children: ReactNode }) {
         setLibraryError(null);
       } catch (error) {
         setLibraryError(error instanceof Error ? error.message : 'Unable to sync your library.');
-        console.error('Unable to sync Adaptle local data; queued changes remain pending.', error);
+        console.warn('Unable to sync Adaptle local data; queued changes remain pending.', error);
       } finally {
         setIsLibraryLoading(false);
         syncing = false;
@@ -215,9 +215,13 @@ function LibraryProvider({ children }: { children: ReactNode }) {
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;
 }
 
-function mergeRemoteLibrary(remote: LibraryBook[], local: LibraryBook[]): LibraryBook[] {
+export function mergeRemoteLibrary(
+  remote: LibraryBook[],
+  local: LibraryBook[]
+): LibraryBook[] {
   const localByIsbn = new Map(local.map((book) => [book.isbn13, book]));
-  return remote.map((remoteBook) => {
+  const remoteByIsbn = new Map(remote.map((book) => [book.isbn13, book]));
+  const merged = remote.map((remoteBook) => {
     const localBook = localByIsbn.get(remoteBook.isbn13);
     if (!localBook) return remoteBook;
     return {
@@ -227,8 +231,23 @@ function mergeRemoteLibrary(remote: LibraryBook[], local: LibraryBook[]): Librar
       moviePosterPath: remoteBook.moviePosterPath ?? localBook.moviePosterPath,
       movieTitle: remoteBook.movieTitle ?? localBook.movieTitle,
       movieYear: remoteBook.movieYear ?? localBook.movieYear,
+      leadActors: remoteBook.leadActors ?? localBook.leadActors,
+      leadCharacters: remoteBook.leadCharacters ?? localBook.leadCharacters,
+      settingHint: remoteBook.settingHint ?? localBook.settingHint,
+      characterHint: remoteBook.characterHint ?? localBook.characterHint,
+      storyPremise: remoteBook.storyPremise ?? localBook.storyPremise,
     };
   });
+  for (const localBook of local) {
+    if (!remoteByIsbn.has(localBook.isbn13)) merged.push(localBook);
+  }
+  const localOnly = new Map(
+    local.filter((book) => !remoteByIsbn.has(book.isbn13)).map((book) => [book.isbn13, book])
+  );
+  return [
+    ...local.filter((book) => localOnly.has(book.isbn13)),
+    ...merged.filter((book) => !localOnly.has(book.isbn13)),
+  ];
 }
 
 function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
@@ -272,6 +291,18 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
           typeof payload.moviePosterPath === 'string' ? payload.moviePosterPath : null,
         movieTitle: typeof payload.movieTitle === 'string' ? payload.movieTitle : undefined,
         movieYear: typeof payload.releaseYear === 'number' ? payload.releaseYear : undefined,
+        settingHint:
+          typeof payload.settingHint === 'string' ? payload.settingHint : undefined,
+        characterHint:
+          typeof payload.characterHint === 'string' ? payload.characterHint : undefined,
+        storyPremise:
+          typeof payload.storyPremise === 'string' ? payload.storyPremise : undefined,
+        leadActors: Array.isArray(payload.leadActors)
+          ? payload.leadActors.filter((value): value is string => typeof value === 'string')
+          : undefined,
+        leadCharacters: Array.isArray(payload.leadCharacters)
+          ? payload.leadCharacters.filter((value): value is string => typeof value === 'string')
+          : undefined,
       });
     }
   }

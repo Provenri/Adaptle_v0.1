@@ -14,6 +14,11 @@ export type LibraryBook = {
   moviePosterPath?: string | null;
   movieTitle?: string;
   movieYear?: number;
+  leadActors?: string[];
+  leadCharacters?: string[];
+  settingHint?: string;
+  characterHint?: string;
+  storyPremise?: string;
 };
 
 export type BookCandidate = Omit<
@@ -28,6 +33,7 @@ export type BookCandidate = Omit<
   moviePosterPath?: string | null;
   leadActors?: string[];
   leadCharacters?: string[];
+  storyPremise?: string;
   numberOfPages: number | null;
   publicationYear: number | null;
   subjects: readonly string[];

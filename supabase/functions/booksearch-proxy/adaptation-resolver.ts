@@ -106,7 +106,7 @@ async function lookupKnownAdaptations(candidates: BookCandidate[]): Promise<Book
   url.searchParams.set('tmdb_id', 'not.is.null');
   url.searchParams.set(
     'select',
-    'isbn13,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters',
+    'isbn13,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise',
   );
   const response = await fetch(
     url,
@@ -127,6 +127,9 @@ async function lookupKnownAdaptations(candidates: BookCandidate[]): Promise<Book
     movie_poster_path: string | null;
     lead_actors: string[] | null;
     lead_characters: string[] | null;
+    setting_hint: string | null;
+    character_hint: string | null;
+    story_premise: string | null;
   }>;
   const byIsbn = new Map(
     rows.map((row) => [
@@ -140,6 +143,9 @@ async function lookupKnownAdaptations(candidates: BookCandidate[]): Promise<Book
         moviePosterPath: row.movie_poster_path,
         leadActors: row.lead_actors ?? undefined,
         leadCharacters: row.lead_characters ?? undefined,
+        settingHint: row.setting_hint ?? undefined,
+        characterHint: row.character_hint ?? undefined,
+        storyPremise: row.story_premise ?? undefined,
       },
     ]),
   );

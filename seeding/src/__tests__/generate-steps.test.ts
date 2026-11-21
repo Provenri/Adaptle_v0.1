@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildPremisePrompt } from '../steps/backfill-story-premises.js';
 import { buildHintPrompt, HINT_JSON_SCHEMA } from '../steps/generate-hints.js';
 import {
   buildThreadPrompt,
@@ -33,11 +34,19 @@ function makeBook(overrides: Partial<HintedBook>): HintedBook {
     leadActors: ['Actor One'],
     settingHint: 'A quiet town in 1990s America',
     characterHint: 'A dreamer and a skeptic',
+    storyPremise: 'An unlikely pair confront a changing world and its hidden costs.',
     ...overrides,
   };
 }
 
 describe('buildHintPrompt', () => {
+  it('builds story premises without third-party film metadata', () => {
+    const prompt = buildPremisePrompt('Do Androids Dream of Electric Sheep?', 'Philip K. Dick');
+    expect(prompt).toContain('Do Androids Dream of Electric Sheep?');
+    expect(prompt).toContain('Philip K. Dick');
+    expect(prompt).not.toContain('Blade Runner');
+  });
+
   it('only contains book title and author — never TMDB movie data', () => {
     const prompt = buildHintPrompt('Do Androids Dream of Electric Sheep?', 'Philip K. Dick');
     expect(prompt).toContain('Do Androids Dream of Electric Sheep?');
@@ -45,8 +54,12 @@ describe('buildHintPrompt', () => {
     expect(prompt).not.toContain('Blade Runner');
   });
 
-  it('schema requires both hints and forbids extras', () => {
-    expect(HINT_JSON_SCHEMA.required).toEqual(['setting_hint', 'character_hint']);
+  it('schema requires the premise and hints and forbids extras', () => {
+    expect(HINT_JSON_SCHEMA.required).toEqual([
+      'story_premise',
+      'setting_hint',
+      'character_hint',
+    ]);
     expect(HINT_JSON_SCHEMA.additionalProperties).toBe(false);
   });
 });
