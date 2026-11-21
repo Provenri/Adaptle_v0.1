@@ -400,6 +400,13 @@ STRICT RULES:
 * Support offline optimistic edits through MMKV and the existing mutation queue.
 * Include the new personal reason text in the privacy policy and deletion/export handling.
 
+### Archive Replay — Phase 2
+
+* Add a **“Play another Adaptle”** action after daily completion to play a past puzzle.
+* Archive plays use separate replay history and must never delete or replace today's daily result.
+* Archived puzzles do not increase today's score or streak.
+* Keep today's completed puzzle single-play in production; `Replay today (development)` remains a QA-only control.
+
 ### Branching Strategy After Phase 1
 
 Once Phase 1 is live, production must be isolated from ongoing Phase 2 development.

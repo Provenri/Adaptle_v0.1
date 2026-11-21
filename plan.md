@@ -90,6 +90,7 @@ Repository layout:
 - **Reader DNA:** attribute bars computed client-side from saved-book genres; new section in My Library.
 - **Account linking:** Apple/Google sign-in linking to the anonymous user (Supabase `linkIdentity`).
 - **Why read it?:** three pre-seeded factual editorial reasons plus up to three editable private user reasons per saved book. Editorial reasons are generated offline; user edits sync through MMKV and the mutation queue.
+- **Archive replay:** a “Play another Adaptle” archive mode for past puzzles. Archived plays never reset today's result, never inflate today's daily score, and use separate replay history. Keep today's completed puzzle single-play in production; the development-only "Replay today" action remains QA-only.
 
 ## Phase 3 — Monetization (scaffolding only)
 
@@ -154,6 +155,7 @@ Match each build profile and Expo Update channel to its intended environment.
 | 17 | phase2-reader-dna | qa-mvp |
 | 18 | phase2-account-linking | qa-mvp |
 | 18b | phase2-why-read-it | qa-mvp |
+| 18c | phase2-archive-replay | qa-mvp |
 | 19 | phase3-scaffolding | qa-mvp |
 
 ## Notes & Considerations
