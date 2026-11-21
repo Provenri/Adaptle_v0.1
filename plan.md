@@ -69,7 +69,7 @@ Repository layout:
 - Reused in Play prompt, bonus round, library cards, and share card.
 
 ### 1.6 My Library tab
-- Shelf chips (`To be read` / `Finished` / `Snooze`) with counts, search, status filter.
+- Shelf chips (`To be read` / `Reading` / `Finished`) with counts, search, status filter.
 - Book cards: typographic cover, adaptation info (movie, year, streaming via `tmdb-proxy`), status dropdown.
 - `+ Add Book`: Open Library text search + `expo-camera` ISBN barcode scan → `booksearch-proxy`; manual books get `tmdb_id = null`.
 - Empty state onboarding screen (per wireframe).
@@ -89,6 +89,7 @@ Repository layout:
 - **Push notifications:** `expo-notifications` daily reminder (local scheduled notification at launch; Expo Push via Supabase later).
 - **Reader DNA:** attribute bars computed client-side from saved-book genres; new section in My Library.
 - **Account linking:** Apple/Google sign-in linking to the anonymous user (Supabase `linkIdentity`).
+- **Why read it?:** three pre-seeded factual editorial reasons plus up to three editable private user reasons per saved book. Editorial reasons are generated offline; user edits sync through MMKV and the mutation queue.
 
 ## Phase 3 — Monetization (scaffolding only)
 
@@ -152,6 +153,7 @@ Match each build profile and Expo Update channel to its intended environment.
 | 16 | phase2-notifications | qa-mvp |
 | 17 | phase2-reader-dna | qa-mvp |
 | 18 | phase2-account-linking | qa-mvp |
+| 18b | phase2-why-read-it | qa-mvp |
 | 19 | phase3-scaffolding | qa-mvp |
 
 ## Notes & Considerations

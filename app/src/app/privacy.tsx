@@ -91,8 +91,8 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
             </PolicyText>
             <PolicyText>
               <PolicyStrong>Your library and game data.</PolicyStrong> We store book ISBNs and
-              factual catalog metadata such as publication year, your shelf status, an optional
-              Snooze return date, daily puzzle date, round breakdown, score, and completion time.
+              factual catalog metadata such as publication year, your shelf status, daily puzzle
+              date, round breakdown, score, and completion time.
             </PolicyText>
             <PolicyText>
               <PolicyStrong>Search and ISBN data.</PolicyStrong> Book searches and scanned or typed
@@ -117,9 +117,9 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
             <PolicyText>
               We use information only to provide and secure the app: authenticate anonymous
               sessions, load daily puzzles, save and synchronize your shelf and scores, calculate
-              streaks, restore expired Snoozed books to your To be read shelf, process book searches
-              and ISBN lookups, retrieve factual movie information and streaming availability,
-              maintain service reliability, and respond to support or privacy requests.
+              streaks, process book searches and ISBN lookups, retrieve factual movie information
+              and streaming availability, maintain service reliability, and respond to support or
+              privacy requests.
             </PolicyText>
             <PolicyText>
               Adaptle does not sell personal information and does not use your data for behavioral

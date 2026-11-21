@@ -21,7 +21,6 @@ import {
   syncOfflineMutation,
 } from '@/lib/supabase';
 import { calculateStreak, mergeDailyScores, type DailyScore } from '@/lib/scores';
-import { isSnoozeExpired } from '@/lib/snooze';
 
 const LIBRARY_KEY = 'library-v1';
 const SCORES_KEY = 'daily-scores-v1';
@@ -36,10 +35,9 @@ type LibraryContextValue = {
     candidate: Omit<BookCandidate, 'numberOfPages' | 'publicationYear' | 'subjects' | 'source'> & {
       publicationYear?: number | null;
     },
-    status?: ShelfStatus,
-    snoozedUntil?: string
+    status?: ShelfStatus
   ) => void;
-  updateStatus: (isbn13: string, status: ShelfStatus, snoozedUntil?: string) => void;
+  updateStatus: (isbn13: string, status: ShelfStatus) => void;
   removeBook: (isbn13: string) => void;
   saveScore: (score: DailyScore) => void;
   resetTodayScore: (puzzleDate: string) => Promise<void>;
@@ -56,8 +54,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 }
 
 function LibraryProvider({ children }: { children: ReactNode }) {
-  const [books, setBooks] = useState<LibraryBook[]>(
-    () => localStorage.get<LibraryBook[]>(LIBRARY_KEY) ?? []
+  const [books, setBooks] = useState<LibraryBook[]>(() =>
+    (localStorage.get<LibraryBook[]>(LIBRARY_KEY) ?? []).filter(
+      (book) => (book as { status: string }).status !== 'SNOOZE'
+    )
   );
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [isLibraryLoading, setIsLibraryLoading] = useState(process.env.NODE_ENV !== 'test');
@@ -101,19 +101,9 @@ function LibraryProvider({ children }: { children: ReactNode }) {
           fetchUserLibrary(),
         ]);
         setScores((localScores) => mergeDailyScores(localScores, remoteScores));
-        setBooks((localLibrary) => {
-          const merged = overlayPendingLibraryMutations(
-            mergeRemoteLibrary(remoteLibrary, localLibrary)
-          );
-          const { books, expired } = restoreExpiredSnoozes(merged);
-          expired.forEach((book) => {
-            enqueueOfflineMutation({
-              type: 'library-upsert',
-              payload: { ...book, status: 'TO_BE_READ', snoozedUntil: null },
-            });
-          });
-          return books;
-        });
+        setBooks((localLibrary) =>
+          overlayPendingLibraryMutations(mergeRemoteLibrary(remoteLibrary, localLibrary))
+        );
         setLibraryError(null);
       } catch (error) {
         setLibraryError(error instanceof Error ? error.message : 'Unable to sync your library.');
@@ -137,7 +127,7 @@ function LibraryProvider({ children }: { children: ReactNode }) {
       isLibraryLoading,
       scores,
       currentStreak: calculateStreak(scores),
-      saveBook: (candidate, status = 'TO_BE_READ', snoozedUntil) => {
+      saveBook: (candidate, status = 'TO_BE_READ') => {
         setBooks((current) => {
           const existing = current.find((book) => book.isbn13 === candidate.isbn13);
           if (existing) {
@@ -148,7 +138,6 @@ function LibraryProvider({ children }: { children: ReactNode }) {
                     ...candidate,
                     publicationYear: candidate.publicationYear ?? book.publicationYear,
                     status,
-                    snoozedUntil: status === 'SNOOZE' ? snoozedUntil : undefined,
                   }
                 : book
             );
@@ -158,30 +147,25 @@ function LibraryProvider({ children }: { children: ReactNode }) {
               ...candidate,
               publicationYear: candidate.publicationYear ?? undefined,
               status,
-              snoozedUntil: status === 'SNOOZE' ? snoozedUntil : undefined,
             },
             ...current,
           ];
         });
         enqueueOfflineMutation({
           type: 'library-upsert',
-          payload: { ...candidate, status, snoozedUntil },
+          payload: { ...candidate, status },
         });
         setSyncVersion((version) => version + 1);
       },
-      updateStatus: (isbn13, status, snoozedUntil) => {
+      updateStatus: (isbn13, status) => {
         setBooks((current) =>
-          current.map((book) =>
-            book.isbn13 === isbn13
-              ? { ...book, status, snoozedUntil: status === 'SNOOZE' ? snoozedUntil : undefined }
-              : book
-          )
+          current.map((book) => (book.isbn13 === isbn13 ? { ...book, status } : book))
         );
         const book = books.find((item) => item.isbn13 === isbn13);
         if (book) {
           enqueueOfflineMutation({
             type: 'library-upsert',
-            payload: { ...book, status, snoozedUntil },
+            payload: { ...book, status },
           });
           setSyncVersion((version) => version + 1);
         }
@@ -233,7 +217,6 @@ function mergeRemoteLibrary(remote: LibraryBook[], local: LibraryBook[]): Librar
     return {
       ...remoteBook,
       publicationYear: remoteBook.publicationYear ?? localBook.publicationYear,
-      snoozedUntil: remoteBook.snoozedUntil ?? localBook.snoozedUntil,
       tmdbId: remoteBook.tmdbId ?? localBook.tmdbId,
       moviePosterPath: remoteBook.moviePosterPath ?? localBook.moviePosterPath,
       movieTitle: remoteBook.movieTitle ?? localBook.movieTitle,
@@ -256,7 +239,7 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
       }
       continue;
     }
-    if (!isbn13 || (status !== 'TO_BE_READ' && status !== 'FINISHED' && status !== 'SNOOZE')) {
+    if (!isbn13 || (status !== 'TO_BE_READ' && status !== 'READING' && status !== 'FINISHED')) {
       continue;
     }
     const index = result.findIndex((book) => book.isbn13 === isbn13);
@@ -287,21 +270,6 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
     }
   }
   return result;
-}
-
-function restoreExpiredSnoozes(remote: LibraryBook[]): {
-  books: LibraryBook[];
-  expired: LibraryBook[];
-} {
-  const expired = remote.filter(
-    (book) => book.status === 'SNOOZE' && isSnoozeExpired(book.snoozedUntil)
-  );
-  const books = remote.map((book) =>
-    expired.includes(book)
-      ? { ...book, status: 'TO_BE_READ' as const, snoozedUntil: undefined }
-      : book
-  );
-  return { books, expired };
 }
 
 export function useLibrary(): LibraryContextValue {

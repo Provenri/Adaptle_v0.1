@@ -1,6 +1,6 @@
 import type { CoverTheme } from '@/components/typographic-cover';
 
-export type ShelfStatus = 'TO_BE_READ' | 'FINISHED' | 'SNOOZE';
+export type ShelfStatus = 'TO_BE_READ' | 'READING' | 'FINISHED';
 
 export type LibraryBook = {
   isbn13: string;
@@ -10,7 +10,6 @@ export type LibraryBook = {
   genre: string | null;
   coverTheme: CoverTheme;
   status: ShelfStatus;
-  snoozedUntil?: string;
   tmdbId?: number;
   moviePosterPath?: string | null;
   movieTitle?: string;
@@ -29,6 +28,6 @@ export type BookCandidate = Omit<
 
 export const SHELF_LABELS: Record<ShelfStatus, string> = {
   TO_BE_READ: 'To be read',
+  READING: 'Reading',
   FINISHED: 'Finished',
-  SNOOZE: 'Snooze',
 };

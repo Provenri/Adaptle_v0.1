@@ -16,7 +16,6 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { APP_ICON } from '@/assets';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
-import { formatSnoozeDate, SNOOZE_OPTIONS, snoozeUntil } from '@/lib/snooze';
 import {
   SHELF_LABELS,
   type BookCandidate,
@@ -40,7 +39,7 @@ export default function LibraryScreen() {
     () => ({
       TO_BE_READ: books.filter((book) => book.status === 'TO_BE_READ').length,
       FINISHED: books.filter((book) => book.status === 'FINISHED').length,
-      SNOOZE: books.filter((book) => book.status === 'SNOOZE').length,
+      READING: books.filter((book) => book.status === 'READING').length,
     }),
     [books]
   );
@@ -110,12 +109,27 @@ export default function LibraryScreen() {
               <ShelfFilterButton
                 count={counts[status]}
                 key={status}
-                label={SHELF_LABELS[status]}
+                label={
+                  status === 'TO_BE_READ'
+                    ? 'To read'
+                    : status === 'READING'
+                      ? 'Reading'
+                      : 'Finished'
+                }
                 selected={filter === status}
                 onPress={() => setFilter(status)}
               />
             ))}
           </View>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.filterHelp}>
+            {filter === 'ALL'
+              ? 'Show every book in your shelf.'
+              : filter === 'TO_BE_READ'
+                ? 'Show books on your reading queue.'
+                : filter === 'READING'
+                  ? 'Show books you’re reading now.'
+                  : 'Show books you completed.'}
+          </ThemedText>
 
           <TextInput
             accessibilityLabel="Search my shelf"
@@ -143,7 +157,6 @@ export default function LibraryScreen() {
                   book={book}
                   key={book.isbn13}
                   onStatusChange={(status) => updateStatus(book.isbn13, status)}
-                  onSnooze={(deadline) => updateStatus(book.isbn13, 'SNOOZE', deadline)}
                   onRemove={() =>
                     Alert.alert(
                       'Remove from library?',
@@ -220,12 +233,10 @@ function ShelfFilterButton({
 function LibraryBookCard({
   book,
   onStatusChange,
-  onSnooze,
   onRemove,
 }: {
   book: LibraryBook;
   onStatusChange: (status: ShelfStatus) => void;
-  onSnooze: (deadline: string) => void;
   onRemove: () => void;
 }) {
   const [editingStatus, setEditingStatus] = useState(false);
@@ -269,11 +280,6 @@ function LibraryBookCard({
               Added manually · No known adaptation
             </ThemedText>
           )}
-          {book.status === 'SNOOZE' && book.snoozedUntil ? (
-            <ThemedText type="smallBold" style={styles.snoozeDate}>
-              😴 Snoozed until {formatSnoozeDate(book.snoozedUntil)}
-            </ThemedText>
-          ) : null}
         </View>
       </View>
       <View style={styles.statusRow}>
@@ -285,7 +291,14 @@ function LibraryBookCard({
           accessibilityLabel={`Change status for ${book.title}`}
           onPress={() => setEditingStatus((current) => !current)}
           style={({ pressed }) => [styles.statusButton, pressed && styles.pressed]}>
-          <ThemedText type="smallBold">{SHELF_LABELS[book.status]} ▾</ThemedText>
+          <ThemedText type="smallBold">
+            {book.status === 'READING'
+              ? 'Reading'
+              : book.status === 'FINISHED'
+                ? 'Finished'
+                : 'To read'}{' '}
+            ▾
+          </ThemedText>
         </Pressable>
       </View>
       {editingStatus ? (
@@ -296,20 +309,16 @@ function LibraryBookCard({
                 accessibilityRole="button"
                 key={status}
                 onPress={() => {
-                  if (status === 'SNOOZE') {
-                    chooseSnoozeDuration((deadline) => {
-                      onSnooze(deadline);
-                      setEditingStatus(false);
-                    });
-                  } else {
-                    onStatusChange(status);
-                    setEditingStatus(false);
-                  }
+                  onStatusChange(status);
+                  setEditingStatus(false);
                 }}
                 style={({ pressed }) => [styles.statusOption, pressed && styles.pressed]}>
                 <ThemedText type="small" style={styles.darkText}>
-                  {book.status === status ? '✓ ' : ''}
-                  {SHELF_LABELS[status]}
+                  {status === 'TO_BE_READ'
+                    ? 'To read'
+                    : status === 'READING'
+                      ? 'Reading'
+                      : 'Finished'}
                 </ThemedText>
               </Pressable>
             ))}
@@ -326,16 +335,6 @@ function LibraryBookCard({
       ) : null}
     </View>
   );
-}
-
-function chooseSnoozeDuration(onSelect: (deadline: string) => void): void {
-  Alert.alert('Snooze this book', 'When should it return to To be read?', [
-    ...SNOOZE_OPTIONS.map((option) => ({
-      text: option.label,
-      onPress: () => onSelect(snoozeUntil(option.days)),
-    })),
-    { text: 'Cancel', style: 'cancel' },
-  ]);
 }
 
 function EmptyShelf({ query, onAdd }: { query: string; onAdd: () => void }) {
@@ -571,17 +570,33 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     lineHeight: 18,
   },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  filters: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.one,
+  },
+  filterHelp: {
+    marginTop: -Spacing.two,
+  },
   filterButton: {
+    alignItems: 'center',
     borderColor: '#CCD2CF',
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    flex: 1,
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 1,
+    paddingVertical: Spacing.one,
   },
   filterButtonSelected: { backgroundColor: '#173E32', borderColor: '#173E32' },
-  filterButtonText: { color: '#173E32' },
-  filterButtonSelectedText: { color: '#FFFFFF' },
+  filterButtonText: { color: '#173E32', fontSize: 13, lineHeight: 16, textAlign: 'center' },
+  filterButtonSelectedText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    lineHeight: 16,
+    textAlign: 'center',
+  },
   searchInput: {
     backgroundColor: '#F4EEE6',
     borderRadius: 14,
@@ -618,26 +633,29 @@ const styles = StyleSheet.create({
   statusOptions: {
     alignItems: 'center',
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  snoozeDate: {
-    color: '#74421B',
-    marginTop: Spacing.one,
+    gap: Spacing.one,
   },
   removeButton: {
+    alignItems: 'center',
     borderColor: '#A84732',
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 36,
+    paddingHorizontal: 1,
+    paddingVertical: Spacing.one,
   },
   removeText: { color: '#A84732' },
   statusOption: {
+    alignItems: 'center',
     backgroundColor: '#E8E1D7',
     borderRadius: 999,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 36,
+    paddingHorizontal: 1,
+    paddingVertical: Spacing.one,
   },
   emptyState: { alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.six },
   emptyIcon: { fontSize: 48, lineHeight: 58 },

@@ -12,6 +12,14 @@ import { createScoreShareText } from '@/lib/score-sharing';
 import { AppDataProvider } from '@/providers/app-data-provider';
 
 jest.mock('@/lib/local-storage', () => {
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .formatToParts(new Date())
+    .reduce((parts, item) => ({ ...parts, [item.type]: item.value }), {} as Record<string, string>);
   const values = new Map<string, unknown>([
     [
       'library-v1',
@@ -30,6 +38,7 @@ jest.mock('@/lib/local-storage', () => {
         },
       ],
     ],
+    ['play-landing-seen', `${today.year}-${today.month}-${today.day}`],
   ]);
   return {
     localStorage: {
@@ -184,15 +193,10 @@ describe('tab screens', () => {
         name: 'Change status for Do Androids Dream of Electric Sheep?',
       })
     );
-    const snoozeAlert = jest
-      .spyOn(Alert, 'alert')
-      .mockImplementation((_title, _message, buttons) => {
-        buttons?.find((button) => button.text === '1 week')?.onPress?.();
-      });
-    await fireEvent.press(screen.getByRole('button', { name: 'Snooze' }));
-    expect(screen.getByText('Snooze 1')).toBeTruthy();
-    expect(screen.getByText(/Snoozed until/)).toBeTruthy();
-    snoozeAlert.mockRestore();
+    await fireEvent.press(screen.getByRole('button', { name: 'Reading' }));
+    expect(screen.getByText('Reading 1')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Reading 1' }));
+    expect(screen.getByText('Show books you’re reading now.')).toBeTruthy();
   });
 
   it('adds a book from search results', async () => {
@@ -235,8 +239,8 @@ describe('tab screens', () => {
 
 describe('score sharing', () => {
   it('formats the viral share text from the actual round breakdown', () => {
-    expect(createScoreShareText('14', 12, [3, 2, 1, 0, 3, 3])).toBe(
-      'Adaptle #14 — 12/18 pts 🎬📖 (🔥 7)\n🟨 ⬜ 🟫 ⬛ 🟨 ⭐'
+    expect(createScoreShareText('2026-11-21', 12, [3, 2, 1, 0, 3, 3], 7, 2)).toBe(
+      'Adaptle — 21 Nov 2026\nI scored 12/18 🎬📖 and saved 2 books to my shelf.\n\n🔥 7-day streak\n🟩 🟨 🟧 ⬛ 🟩 ⭐\n\nCan you match today’s book-to-movie adaptations?'
     );
   });
 });

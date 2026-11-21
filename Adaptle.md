@@ -1,7 +1,7 @@
 # Adaptle — Product & Technical Architecture Blueprint (Final)
 
 ## 1. Core Concept & Product Strategy
-**Adaptle** is a mobile-first, Wordle-style daily book-to-movie trivia game paired with an organic personal reading tracker (**`To be read`**, **`Finished`**, and **`Snooze`**). Instead of confronting new players with an empty shelf or copyrighted book summaries, users immediately play a **5-round daily cast-matching challenge** plus a **Round 6 Common Thread Bonus**—building their reading list and streaming watchlist one tap at a time from every reveal card.
+**Adaptle** is a mobile-first, Wordle-style daily book-to-movie trivia game paired with an organic personal reading tracker (**`To be read`**, **`Reading`**, and **`Finished`**). Instead of confronting new players with an empty shelf or copyrighted book summaries, users immediately play a **5-round daily cast-matching challenge** plus a **Round 6 Common Thread Bonus**—building their reading list and streaming watchlist one tap at a time from every reveal card.
 
 ### Key Differentiators
 * **Game-First Organic Library:** Solves the cold-start problem by letting users discover books through daily gameplay and save them directly from reveal cards.
@@ -67,7 +67,7 @@ To eliminate publisher cover copyright risk and broken external image URLs, ever
    * **Hint 2 — Character Roles:** Drops round potential to **1 Point** (e.g., *"A weary detective and an experimental android"*).
    * **Hint 3 — Lead Actor Initials:** Stays at **1 Point** as a final rescue clue (e.g., `H. F. & S. Y.`).
    * **Wrong Guess:** **0 Points** (still displays the Reveal Card).
-3. **The Reveal Card:** Displays the hidden movie poster, release year, director, cast, and streaming providers (via TMDB), plus 1-tap shelf buttons (**`To be read`**, **`Finished`**, **`Snooze`**).
+3. **The Reveal Card:** Displays the hidden movie poster, release year, director, cast, and streaming providers (via TMDB), plus 1-tap shelf buttons (**`To be read`**, **`Reading`**, **`Finished`**).
 
 ### Part 2: Round 6 — Common Thread Bonus (+3 Points Max)
 After Round 5, players unlock a side-by-side bonus round (**18-point daily max**) supporting three rotating formats:
@@ -82,6 +82,25 @@ Players choose what both works share out of **3 choices** across `The Setting`, 
 ## 5. UI Wireframes (2-Tab Architecture)
 
 ### Tab 1: `Play` — State A (Active Question + Progressive Hint Ladder)
+
+Before entering the daily game, Adaptle shows a concise once-per-day landing state:
+
+```text
+Welcome to Adaptle / Welcome back
+
+5 adaptations. 1 common thread. 18 points to play for.
+
+Match actors to screen adaptations, unlock clues when needed,
+then find the shared connection in the bonus round.
+
+[ Play today's puzzle ]
+```
+
+If the user already completed the day, the landing instead shows the completed
+score and streak with a "View today's results" action. The current puzzle date
+is stored locally so the landing is not repeated after every tab switch or app
+refresh on the same day.
+
 ```text
 ┌─────────────────────────────────────────────────────┐
 │  ADAPTLE #14          ● ● ○ ○ ○  (Round 2/5)   🔥 7 │
@@ -138,7 +157,7 @@ Players choose what both works share out of **3 choices** across `The Setting`, 
 │  SAVE THIS BOOK TO YOUR LIBRARY:                    │
 │                                                     │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ │
-│  │ 📖 To be read│ │ ✅ Finished  │ │ 💤 Snooze    │ │
+│  │ 📖 To be read│ │ 📚 Reading   │ │ ✅ Finished   │ │
 │  └──────────────┘ └──────────────┘ └──────────────┘ │
 │                                                     │
 ├─────────────────────────────────────────────────────┤
@@ -219,7 +238,7 @@ Saved 2 books to my shelf!
 │  14 Books Saved  •  9 Screen Adaptations            │
 ├─────────────────────────────────────────────────────┤
 │  ┌───────────────┐ ┌───────────────┐ ┌────────────┐ │
-│  │📖 To be read 8│ │ ✅ Finished 4 │ │💤 Snooze 2 │ │
+│  │📖 To be read 8│ │ 📚 Reading 2 │ │ ✅ Finished 4 │ │
 │  └───────────────┘ └───────────────┘ └────────────┘ │
 ├─────────────────────────────────────────────────────┤
 │  🔍 Search my shelf...                 [ Filter ▾ ] │
@@ -255,7 +274,7 @@ Saved 2 books to my shelf!
 │  MY LIBRARY                         [ + Add Book ]  │
 ├─────────────────────────────────────────────────────┤
 │  ┌───────────────┐ ┌───────────────┐ ┌────────────┐ │
-│  │📖 To be read 0│ │ ✅ Finished 0 │ │💤 Snooze 0 │ │
+│  │📖 To be read 0│ │ 📚 Reading 0 │ │ ✅ Finished 0 │ │
 │  └───────────────┘ └───────────────┘ └────────────┘ │
 ├─────────────────────────────────────────────────────┤
 │                     📚  +  🎬                       │
@@ -308,7 +327,7 @@ Saved 2 books to my shelf!
    * `id` (UUID, PK)
    * `user_id` (UUID, FK -> `auth.users`)
    * `isbn13` (TEXT, FK -> `catalog_items.isbn13`)
-   * `status` (TEXT — `'TO_BE_READ'`, `'FINISHED'`, or `'SNOOZE'`)
+   * `status` (TEXT — `'TO_BE_READ'`, `'READING'`, or `'FINISHED'`)
    * `saved_at` (TIMESTAMPTZ, DEFAULT `now()`)
    * *Unique Constraint:* `(user_id, isbn13)`
 
@@ -369,8 +388,17 @@ STRICT RULES:
 
 ### Launch Phases
 1. **Phase 1 (MVP Launch):** Run the offline seeding script using **Wikidata SPARQL + Open Library (CC0) + TMDB + Gemini Flash-Lite** to populate 250 puzzles + 50 Common Thread pairs; launch the 2-tab React Native + Expo app on Supabase Frankfurt (`eu-central-1`).
-2. **Phase 2 (Retention & Polish):** Add daily push notifications, Reader DNA attribute bars (computed from saved book genres), and account linking that preserves the anonymous user's library, scores, and streak.
+2. **Phase 2 (Retention & Polish):** Add daily push notifications, Reader DNA attribute bars (computed from saved book genres), account linking that preserves the anonymous user's library, scores, and streak, and a **“Why read it?”** feature with three factual editorial reasons plus up to three private user reasons per saved book.
 3. **Phase 3 (Monetization):** Activate TMDB commercial license and launch **Adaptle Plus** (unlimited archive puzzles, streaming release alerts for `To be read` books, and optional V2 "What Would I Do" AI playbooks).
+
+### Why Read It? — Phase 2
+
+* Show three short, factual, spoiler-free **editorial reasons** on seeded book reveal/library cards.
+* Generate editorial reasons once during offline seeding; no live AI calls are triggered by users.
+* Let each user add, edit, and remove up to **three private personal reasons** for each saved book.
+* Store editorial reasons on `catalog_items` and personal reasons on `user_library`.
+* Support offline optimistic edits through MMKV and the existing mutation queue.
+* Include the new personal reason text in the privacy policy and deletion/export handling.
 
 ### Branching Strategy After Phase 1
 

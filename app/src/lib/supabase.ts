@@ -57,7 +57,7 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
   if (mutation.type === 'library-upsert') {
     const isbn13 = requiredString(mutation.payload.isbn13, 'isbn13');
     const status = requiredString(mutation.payload.status, 'status');
-    if (!['TO_BE_READ', 'FINISHED', 'SNOOZE'].includes(status)) {
+    if (!['TO_BE_READ', 'READING', 'FINISHED'].includes(status)) {
       throw new Error(`Unsupported library status "${status}"`);
     }
 
@@ -88,14 +88,11 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
       if (catalogInsertError) throw catalogInsertError;
     }
 
-    const snoozedUntil =
-      typeof mutation.payload.snoozedUntil === 'string' ? mutation.payload.snoozedUntil : null;
     const { error: shelfError } = await supabase.from('user_library').upsert(
       {
         user_id: user.id,
         isbn13,
         status,
-        snoozed_until: status === 'SNOOZE' ? snoozedUntil : null,
       },
       { onConflict: 'user_id,isbn13' }
     );
@@ -175,7 +172,7 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
   const { data, error } = await supabase
     .from('user_library')
     .select(
-      'isbn13,status,snoozed_until,catalog_items(isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,movie_poster_path)'
+      'isbn13,status,catalog_items(isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,movie_poster_path)'
     )
     .order('saved_at', { ascending: false });
   if (error) throw error;
@@ -192,7 +189,6 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
       genre: catalog.genre,
       coverTheme: catalog.cover_theme,
       status: row.status,
-      snoozedUntil: row.snoozed_until ?? undefined,
       movieTitle: catalog.movie_title ?? undefined,
       movieYear: catalog.release_year ?? undefined,
       tmdbId: catalog.tmdb_id ?? undefined,

@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import {
-  Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,18 +27,52 @@ import {
   getTotalPoints,
   type DailyPuzzle,
 } from '@/lib/game-engine';
-import { createScoreShareText, shareScoreImage } from '@/lib/score-sharing';
+import {
+  createSavedLine,
+  createScoreEmojiGrid,
+  createScoreShareText,
+  shareScoreImage,
+} from '@/lib/score-sharing';
 import { createDailyScore, currentPuzzleDate } from '@/lib/scores';
-import { SNOOZE_OPTIONS, snoozeUntil } from '@/lib/snooze';
+import { localStorage } from '@/lib/local-storage';
 import { useDailyPuzzle, useLibrary } from '@/providers/app-data-provider';
 
-type ShelfStatus = 'TO_BE_READ' | 'FINISHED' | 'SNOOZE';
+type ShelfStatus = 'TO_BE_READ' | 'READING' | 'FINISHED';
 
 export default function PlayScreen() {
   const puzzleQuery = useDailyPuzzle();
+  const { currentStreak, scores } = useLibrary();
+  const today = currentPuzzleDate();
+  const previousLandingDate = localStorage.get<string>('play-landing-seen');
+  const [showLanding, setShowLanding] = useState(previousLandingDate !== today);
+  const [forceReturning, setForceReturning] = useState(false);
+  const completedScore = scores.find((score) => score.puzzleDate === today);
+
+  if (showLanding) {
+    return (
+      <WelcomeScreen
+        completedScore={completedScore}
+        firstVisit={!previousLandingDate && !forceReturning}
+        streak={currentStreak}
+        onContinue={() => {
+          localStorage.set('play-landing-seen', today);
+          setShowLanding(false);
+        }}
+      />
+    );
+  }
 
   if (puzzleQuery.data) {
-    return <DailyGame dailyPuzzle={puzzleQuery.data} />;
+    return (
+      <DailyGame
+        dailyPuzzle={puzzleQuery.data}
+        onDevelopmentReplay={() => {
+          localStorage.set('play-landing-seen', '2000-01-01');
+          setForceReturning(true);
+          setShowLanding(true);
+        }}
+      />
+    );
   }
   if (puzzleQuery.isPending) {
     return <PuzzleStatus title="Preparing today's puzzle" description="Loading today's books…" />;
@@ -57,10 +91,65 @@ export default function PlayScreen() {
   );
 }
 
-function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
+function WelcomeScreen({
+  completedScore,
+  firstVisit,
+  streak,
+  onContinue,
+}: {
+  completedScore?: { totalPoints: number };
+  firstVisit: boolean;
+  streak: number;
+  onContinue: () => void;
+}) {
+  return (
+    <ThemedView style={styles.root}>
+      <SafeAreaView style={styles.welcomeSafeArea}>
+        <View style={styles.welcomeCard}>
+          <Image
+            accessibilityLabel="Adaptle"
+            contentFit="contain"
+            source={APP_ICON}
+            style={styles.welcomeLogo}
+          />
+          <ThemedText type="smallBold" style={styles.welcomeEyebrow}>
+            {firstVisit ? 'WELCOME TO ADAPTLE' : 'WELCOME BACK'}
+          </ThemedText>
+          <ThemedText type="subtitle" style={styles.welcomeTitle}>
+            {completedScore ? "You've completed today's Adaptle" : "Today's puzzle is ready"}
+          </ThemedText>
+          <ThemedText type="default" style={styles.welcomeStatement}>
+            {completedScore
+              ? `${completedScore.totalPoints} / 18 points · ${streak}-day streak`
+              : '5 adaptations. 1 common thread. 18 points to play for.'}
+          </ThemedText>
+          {!completedScore ? (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+              Match actors to screen adaptations, unlock clues when needed, then find the shared
+              connection in the bonus round. Save interesting books to your shelf as you play.
+            </ThemedText>
+          ) : null}
+          <PrimaryButton
+            label={completedScore ? "View today's results" : 'Play today’s puzzle'}
+            onPress={onContinue}
+          />
+        </View>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+function DailyGame({
+  dailyPuzzle,
+  onDevelopmentReplay,
+}: {
+  dailyPuzzle: ProductionDailyPuzzle;
+  onDevelopmentReplay: () => void;
+}) {
   const enginePuzzle = dailyPuzzle.puzzle;
   const [state, dispatch] = useReducer(gameReducer, enginePuzzle, createGameState);
   const [savedThisSession, setSavedThisSession] = useState<Record<string, true>>({});
+  const [streakDetailsOpen, setStreakDetailsOpen] = useState(false);
   const { books, currentStreak, saveScore, saveBook, scores, resetTodayScore } = useLibrary();
   const round = enginePuzzle.rounds[state.roundIndex];
   const details = dailyPuzzle.roundDetails[round.id];
@@ -83,24 +172,53 @@ function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
             <View style={styles.headingRow}>
               <View>
                 <ThemedText type="smallBold" style={styles.eyebrow}>
-                  ADAPTLE #{completedScore.puzzleNumber}
+                  ADAPTLE · {formatPuzzleDate(completedScore.puzzleDate)}
                 </ThemedText>
                 <ThemedText type="subtitle">Daily complete</ThemedText>
               </View>
-              <ThemedText type="smallBold" style={styles.streak}>
-                🔥 {currentStreak}
-              </ThemedText>
+              <Pressable
+                accessibilityLabel={`Current streak: ${currentStreak} days. Show streak details.`}
+                accessibilityRole="button"
+                onPress={() => setStreakDetailsOpen(true)}
+                style={styles.streak}>
+                <ThemedText type="smallBold">🔥 {currentStreak}</ThemedText>
+              </Pressable>
             </View>
+            <Modal
+              animationType="fade"
+              onRequestClose={() => setStreakDetailsOpen(false)}
+              transparent
+              visible={streakDetailsOpen}>
+              <View style={styles.streakModalBackdrop}>
+                <View style={styles.streakModal}>
+                  <ThemedText type="smallBold" style={styles.centered}>
+                    🔥 {currentStreak}-day streak
+                  </ThemedText>
+                  <ThemedText type="subtitle" style={styles.centered}>
+                    {completedScore ? 'Streak extended!' : 'Keep your streak going'}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+                    Complete one daily Adaptle puzzle each day to extend your streak.
+                    {completedScore
+                      ? ' Come back tomorrow for the next puzzle.'
+                      : ' Finish today’s puzzle before midnight in Europe/Berlin.'}
+                  </ThemedText>
+                  <PrimaryButton label="Got it" onPress={() => setStreakDetailsOpen(false)} />
+                </View>
+              </View>
+            </Modal>
             <SummaryView
               total={completedScore.totalPoints}
               breakdown={completedScore.roundBreakdown}
               puzzleNumber={completedScore.puzzleNumber}
+              puzzleDate={completedScore.puzzleDate}
               savedCount={Object.keys(savedThisSession).length}
               streak={currentStreak}
               onReplay={
                 __DEV__
                   ? async () => {
                       await resetTodayScore(completedScore.puzzleDate);
+                      onDevelopmentReplay();
                       completedScoreSaved.current = false;
                       dispatch({ type: 'reset-game' });
                     }
@@ -144,10 +262,35 @@ function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
                 </ThemedText>
               </View>
             </View>
-            <ThemedText type="smallBold" style={styles.streak}>
-              🔥 {currentStreak}
-            </ThemedText>
+            <Pressable
+              accessibilityLabel={`Current streak: ${currentStreak} days. Show streak details.`}
+              accessibilityRole="button"
+              onPress={() => setStreakDetailsOpen(true)}
+              style={styles.streak}>
+              <ThemedText type="smallBold">🔥 {currentStreak}</ThemedText>
+            </Pressable>
           </View>
+          <Modal
+            animationType="fade"
+            onRequestClose={() => setStreakDetailsOpen(false)}
+            transparent
+            visible={streakDetailsOpen}>
+            <View style={styles.streakModalBackdrop}>
+              <View style={styles.streakModal}>
+                <ThemedText type="smallBold" style={styles.centered}>
+                  🔥 {currentStreak}-day streak
+                </ThemedText>
+                <ThemedText type="subtitle" style={styles.centered}>
+                  Keep your streak going
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+                  Complete one daily Adaptle puzzle each day to extend your streak. Finish today’s
+                  puzzle before midnight in Europe/Berlin.
+                </ThemedText>
+                <PrimaryButton label="Got it" onPress={() => setStreakDetailsOpen(false)} />
+              </View>
+            </View>
+          </Modal>
 
           {state.phase === 'question' ? (
             <QuestionView
@@ -173,18 +316,8 @@ function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
               }
               savedStatus={books.find((book) => book.isbn13 === details.isbn13)?.status}
               onSave={(status) => {
-                if (status === 'SNOOZE') {
-                  chooseSnoozeDuration((deadline) => {
-                    saveBook(details, status, deadline);
-                    setSavedThisSession((current) => ({
-                      ...current,
-                      [details.isbn13]: true,
-                    }));
-                  });
-                } else {
-                  saveBook(details, status);
-                  setSavedThisSession((current) => ({ ...current, [details.isbn13]: true }));
-                }
+                saveBook(details, status);
+                setSavedThisSession((current) => ({ ...current, [details.isbn13]: true }));
               }}
             />
           ) : null}
@@ -217,12 +350,14 @@ function DailyGame({ dailyPuzzle }: { dailyPuzzle: ProductionDailyPuzzle }) {
               total={getTotalPoints(state)}
               breakdown={getRoundBreakdown(state)}
               puzzleNumber={dailyPuzzle.id}
+              puzzleDate={dailyPuzzle.puzzleDate}
               savedCount={Object.keys(savedThisSession).length}
               streak={currentStreak}
               onReplay={
                 __DEV__
                   ? async () => {
                       await resetTodayScore(dailyPuzzle.puzzleDate);
+                      onDevelopmentReplay();
                       completedScoreSaved.current = false;
                       dispatch({ type: 'reset-game' });
                     }
@@ -487,15 +622,15 @@ function RevealView({
             onSave={onSave}
           />
           <ShelfButton
-            label="Finished"
-            status="FINISHED"
-            selected={savedStatus === 'FINISHED'}
+            label="Reading"
+            status="READING"
+            selected={savedStatus === 'READING'}
             onSave={onSave}
           />
           <ShelfButton
-            label="Snooze"
-            status="SNOOZE"
-            selected={savedStatus === 'SNOOZE'}
+            label="Finished"
+            status="FINISHED"
+            selected={savedStatus === 'FINISHED'}
             onSave={onSave}
           />
         </View>
@@ -554,16 +689,6 @@ function ShelfButton({
       </ThemedText>
     </Pressable>
   );
-}
-
-function chooseSnoozeDuration(onSelect: (deadline: string) => void): void {
-  Alert.alert('Snooze this book', 'When should it return to To be read?', [
-    ...SNOOZE_OPTIONS.map((option) => ({
-      text: option.label,
-      onPress: () => onSelect(snoozeUntil(option.days)),
-    })),
-    { text: 'Cancel', style: 'cancel' },
-  ]);
 }
 
 function BonusView({
@@ -664,6 +789,7 @@ function SummaryView({
   breakdown,
   savedCount,
   puzzleNumber,
+  puzzleDate,
   streak,
   onReplay,
 }: {
@@ -671,12 +797,13 @@ function SummaryView({
   breakdown: number[];
   savedCount: number;
   puzzleNumber: string;
+  puzzleDate: string;
   streak: number;
   onReplay?: () => Promise<void>;
 }) {
   const scoreCard = useRef<ViewShotRef>(null);
   const [shareError, setShareError] = useState<string | null>(null);
-  const shareText = createScoreShareText(puzzleNumber, total, breakdown);
+  const shareText = createScoreShareText(puzzleDate, total, breakdown, streak, savedCount);
 
   const share = async () => {
     setShareError(null);
@@ -700,7 +827,7 @@ function SummaryView({
               style={styles.shareLogo}
             />
             <ThemedText type="smallBold" style={styles.shareBrand}>
-              ADAPTLE #{puzzleNumber}
+              ADAPTLE · {formatPuzzleDate(puzzleDate)}
             </ThemedText>
           </View>
           <ThemedText style={styles.trophy}>🏆</ThemedText>
@@ -710,43 +837,65 @@ function SummaryView({
           <ThemedText type="small" style={styles.shareCardText}>
             🔥 {streak}-day streak
           </ThemedText>
-          <View style={styles.breakdown}>
-            {breakdown.map((points, index) => (
-              <View key={`${index}-${points}`} style={styles.scoreTile}>
-                <ThemedText type="smallBold">{index === 5 ? '★' : index + 1}</ThemedText>
-                <ThemedText type="small">{points}</ThemedText>
-              </View>
-            ))}
-          </View>
+          <ThemedText type="small" style={styles.shareCardText}>
+            I scored {total}/18 🎬📖{createSavedLine(savedCount)}.
+          </ThemedText>
+          <ThemedText type="default" style={styles.shareEmojiGrid}>
+            {createScoreEmojiGrid(breakdown)}
+          </ThemedText>
+          <ThemedText type="small" style={styles.shareCardText}>
+            Can you match today’s book-to-movie adaptations?
+          </ThemedText>
         </View>
       </ViewShot>
-      <View style={styles.summaryCopy}>
-        <ThemedText type="smallBold" style={styles.centered}>
-          {savedCount} {savedCount === 1 ? 'book' : 'books'} saved to your shelf today
+      <PrimaryButton label="Share daily score card" onPress={share} />
+      {shareError ? (
+        <ThemedText accessibilityRole="alert" type="small" style={styles.wrongText}>
+          {shareError}
         </ThemedText>
-        <PrimaryButton label="Share daily score card" onPress={share} />
-        {onReplay ? (
-          <Pressable accessibilityRole="button" onPress={() => void onReplay()}>
-            <ThemedText type="smallBold" style={styles.devReplayButton}>
-              Replay today (development)
-            </ThemedText>
-          </Pressable>
-        ) : null}
-        {shareError ? (
-          <ThemedText accessibilityRole="alert" type="small" style={styles.wrongText}>
-            {shareError}
-          </ThemedText>
-        ) : (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-            Shares the generated score image when supported.
-          </ThemedText>
-        )}
+      ) : (
         <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-          {shareText}
+          Shares the generated score image when supported.
         </ThemedText>
+      )}
+      <View style={styles.breakdownSection}>
+        <View style={styles.shareDivider} />
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.centered}>
+          Round breakdown
+        </ThemedText>
+        <View style={styles.breakdown}>
+          {breakdown.map((points, index) => (
+            <View key={`${index}-${points}`} style={styles.scoreTile}>
+              <ThemedText type="smallBold">{index === 5 ? '★' : index + 1}</ThemedText>
+              <ThemedText type="small">{points}</ThemedText>
+            </View>
+          ))}
+        </View>
+        {savedCount > 0 ? (
+          <ThemedText type="smallBold" style={styles.centered}>
+            {savedCount} {savedCount === 1 ? 'book' : 'books'} saved to your shelf today
+          </ThemedText>
+        ) : null}
+        <View style={styles.shareDivider} />
       </View>
+      {onReplay ? (
+        <Pressable accessibilityRole="button" onPress={() => void onReplay()}>
+          <ThemedText type="smallBold" style={styles.devReplayButton}>
+            Replay today (development)
+          </ThemedText>
+        </Pressable>
+      ) : null}
     </View>
   );
+}
+
+function formatPuzzleDate(date: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${date}T12:00:00Z`));
 }
 
 function PrimaryButton({
@@ -772,6 +921,37 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
+  },
+  welcomeSafeArea: {
+    flex: 1,
+    justifyContent: 'center',
+    maxWidth: MaxContentWidth,
+    padding: Spacing.four,
+    width: '100%',
+  },
+  welcomeCard: {
+    alignItems: 'center',
+    backgroundColor: '#F8F4EE',
+    borderRadius: 24,
+    gap: Spacing.three,
+    padding: Spacing.five,
+  },
+  welcomeLogo: {
+    borderRadius: 20,
+    height: 88,
+    width: 88,
+  },
+  welcomeEyebrow: {
+    color: '#117579',
+    letterSpacing: 1.5,
+  },
+  welcomeTitle: {
+    textAlign: 'center',
+  },
+  welcomeStatement: {
+    color: '#173E32',
+    fontWeight: '700',
+    textAlign: 'center',
   },
   statusSafeArea: {
     flex: 1,
@@ -830,6 +1010,21 @@ const styles = StyleSheet.create({
     color: '#74421B',
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
+  },
+  streakModalBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
+  streakModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    gap: Spacing.three,
+    maxWidth: 420,
+    padding: Spacing.five,
+    width: '100%',
   },
   stack: {
     gap: Spacing.three,
@@ -1127,9 +1322,13 @@ const styles = StyleSheet.create({
   },
   shareCardText: {
     color: '#C9DCCB',
+    textAlign: 'center',
   },
-  summaryCopy: {
-    gap: Spacing.three,
+  shareEmojiGrid: {
+    color: '#FFF8E7',
+    fontSize: 19,
+    lineHeight: 28,
+    textAlign: 'center',
   },
   devReplayButton: {
     color: '#A84732',
@@ -1141,6 +1340,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.two,
     justifyContent: 'center',
+  },
+  breakdownSection: {
+    gap: Spacing.two,
+  },
+  shareDivider: {
+    alignSelf: 'stretch',
+    backgroundColor: '#D8DADD',
+    height: 1,
+    marginVertical: Spacing.two,
   },
   scoreTile: {
     alignItems: 'center',
