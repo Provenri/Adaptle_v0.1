@@ -44,7 +44,7 @@ Repository layout:
 
 ### 1.2 Edge Functions (Deno/TS)
 - `tmdb-proxy`: movie details, posters, watch providers (keeps TMDB key server-side; adds attribution fields).
-- `booksearch-proxy`: Open Library search + Google Books ISBN fallback for `+ Add Book` (strips `description`/`imageLinks` per copyright rules).
+- `booksearch-proxy`: internal catalog-first search, then Open Library, then Google Books fallback for `+ Add Book` (strips `description`/`imageLinks` per copyright rules); supports independent **Adaptations only** and **Popular only** filters.
 - Shared CORS/auth middleware; unit tests via `deno test`.
 
 ### 1.3 Offline seeding pipeline (`/seeding`, Node/TS CLI)
@@ -74,6 +74,8 @@ Repository layout:
 - Library filter: toggle between all books and only books with screen adaptations; the adaptation toggle composes with shelf status and text search.
 - **Play adaptation:** one-round practice quiz for saved adaptation books from the Library card; uses the same hints/reveal flow but never changes daily score or streak.
 - `+ Add Book`: Open Library text search + `expo-camera` ISBN barcode scan → `booksearch-proxy`; manual books get `tmdb_id = null`.
+- Add-book popularity: Open Library `readinglog_count`, `ratings_count`, `ratings_average`, and `edition_count` produce a logarithmic popularity score. A popular result requires at least 1,000 reading logs, 50 ratings, and 5 editions; the top 25% of qualifying relevant results are returned. Catalog matches are enriched with these factual metrics when the popular filter is enabled. Popularity metadata is response-only and is not saved to the user library.
+- Book-search caching: server-only `book_search_cache` records normalized title, ISBN, adaptation, and popularity responses. TTLs are 6 hours for popular searches, 24 hours for ordinary searches/adaptation resolution, 7 days for ISBN lookups, and 5 minutes for empty results; expired rows are ignored and opportunistically deleted.
 - Empty state onboarding screen (per wireframe).
 
 ### 1.7 Offline & data layer
@@ -172,7 +174,7 @@ Match each build profile and Expo Update channel to its intended environment.
 
 - **Secrets:** TMDB key, OpenAI key, Supabase service-role key, and Supabase project ref must come from the user; I'll pause and ask when wiring them. Nothing secret gets committed.
 - **LLM provider:** OpenAI instead of Gemini (user already has a key). The seeding LLM step is provider-isolated behind a small interface, so swapping providers later is a one-file change.
-- **Copyright guardrails baked in:** no Open Library `description`, no publisher cover images, TMDB text never sent to LLM, TMDB attribution shown on reveal cards.
+- **Copyright guardrails baked in:** no Open Library `description`, no publisher cover images, TMDB text never sent to LLM, TMDB attribution shown on reveal cards. Popularity uses only aggregate numeric Open Library metadata.
 - **Codespaces + Android:** Expo tunnel mode lets a physical Android device with Expo Go connect to the Codespace dev server.
 - **pg_cron nuance:** since content is pre-scheduled by `scheduled_date`, "publishing at midnight" is enforced by RLS date filtering rather than a cron mutation; cron used for housekeeping (e.g., leaderboard/streak maintenance) only if needed.
 - **Blueprint ambiguity (resolved in-plan):** blueprint says each round shows 3 character pairs "from three adaptations" — decoys will be drawn from other catalog items' adaptations in the same day's payload.

@@ -26,6 +26,7 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { APP_ICON } from '@/assets';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
 import {
+  findExistingLibraryMatch,
   SHELF_LABELS,
   type BookCandidate,
   type LibraryBook,
@@ -69,10 +70,42 @@ export default function LibraryScreen() {
   }, [books, filter, query]);
 
   const addBook = (candidate: BookCandidate) => {
+    const existing = findExistingLibraryMatch(books, candidate);
+    const finishAdding = () => {
+      setAddBookOpen(false);
+      setFilter('ALL');
+      setQuery('');
+    };
+    if (existing) {
+      if (!existing.tmdbId && !existing.movieTitle && (candidate.tmdbId || candidate.movieTitle)) {
+        Alert.alert(
+          'Update saved book?',
+          `“${existing.title}” is already on your shelf without adaptation details. Replace that entry with the matching adapted edition?`,
+          [
+            { text: 'Keep existing', style: 'cancel' },
+            {
+              text: 'Update',
+              onPress: () => {
+                if (existing.isbn13 !== candidate.isbn13) removeBook(existing.isbn13);
+                saveBook(candidate, existing.status);
+                finishAdding();
+              },
+            },
+          ]
+        );
+        return;
+      }
+      Alert.alert(
+        'Already in your library',
+        `“${existing.title}” is already on your shelf as ${SHELF_LABELS[
+          existing.status
+        ].toLowerCase()}.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     saveBook(candidate);
-    setAddBookOpen(false);
-    setFilter('ALL');
-    setQuery('');
+    finishAdding();
   };
 
   return (
@@ -94,13 +127,8 @@ export default function LibraryScreen() {
                 <ThemedText type="smallBold" style={styles.eyebrow}>
                   YOUR SHELF
                 </ThemedText>
-                <ThemedText type="subtitle">My Library</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.shelfSummary}>
-                  {books.length} {books.length === 1 ? 'book' : 'books'} saved ·{' '}
-                  {books.filter((book) => book.movieTitle).length}{' '}
-                  {books.filter((book) => book.movieTitle).length === 1
-                    ? 'screen adaptation'
-                    : 'screen adaptations'}
+                <ThemedText type="subtitle" style={styles.title}>
+                  My Library
                 </ThemedText>
               </View>
             </View>
@@ -141,6 +169,7 @@ export default function LibraryScreen() {
                         ? 'Reading'
                         : 'Finished'
                   }
+
                   selected={filter === status}
                   onPress={() => setFilter(status)}
                 />
@@ -428,16 +457,18 @@ function AddBookModal({
   const [searchVersion, setSearchVersion] = useState(0);
   const [scanning, setScanning] = useState(false);
   const [adaptationsOnly, setAdaptationsOnly] = useState(false);
+  const [popularOnly, setPopularOnly] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const searchQuery = useQuery({
-    queryKey: ['book-search', submittedQuery, adaptationsOnly, searchVersion],
-    queryFn: () => searchBookCatalog(submittedQuery, adaptationsOnly),
+    queryKey: ['book-search', submittedQuery, adaptationsOnly, popularOnly, searchVersion],
+    queryFn: () => searchBookCatalog(submittedQuery, adaptationsOnly, popularOnly),
     enabled: visible && submittedQuery.length >= 2,
     staleTime: 5 * 60 * 1000,
   });
   const results = (surpriseBook ? [surpriseBook] : (searchQuery.data ?? []))
-    .filter((candidate) => !adaptationsOnly || candidate.hasAdaptation)
+    .filter((candidate) => Boolean(surpriseBook) || !adaptationsOnly || candidate.hasAdaptation)
+    .filter((candidate) => Boolean(surpriseBook) || !popularOnly || candidate.isPopular)
     .filter(
       (candidate, index, all) => all.findIndex((item) => item.isbn13 === candidate.isbn13) === index
     );
@@ -448,6 +479,13 @@ function AddBookModal({
       ? permission
       : await requestPermission();
     if (response?.granted) setScanning(true);
+  };
+
+  const submitSearch = () => {
+    if (query.trim().length < 2) return;
+    setSurpriseBook(null);
+    setSubmittedQuery(query.trim());
+    setSearchVersion((version) => version + 1);
   };
 
   const showSurpriseBook = async () => {
@@ -534,24 +572,14 @@ function AddBookModal({
                   placeholder="Title, author, or ISBN…"
                   placeholderTextColor="#737B78"
                   returnKeyType="search"
-                  onSubmitEditing={() => {
-                    if (query.trim().length >= 2) {
-                      setSubmittedQuery(query.trim());
-                      setSearchVersion((version) => version + 1);
-                    }
-                  }}
+                  onSubmitEditing={submitSearch}
                   style={[styles.searchInput, styles.modalSearchInput]}
                   value={query}
                 />
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ disabled: query.trim().length < 2 }}
-                  onPress={() => {
-                    if (query.trim().length >= 2) {
-                      setSubmittedQuery(query.trim());
-                      setSearchVersion((version) => version + 1);
-                    }
-                  }}
+                  onPress={submitSearch}
                   style={({ pressed }) => [
                     styles.searchButton,
                     query.trim().length < 2 && styles.disabledButton,
@@ -562,29 +590,42 @@ function AddBookModal({
                   </ThemedText>
                 </Pressable>
               </View>
-              <Pressable
-                accessibilityRole="switch"
-                accessibilityState={{ checked: adaptationsOnly }}
-                accessibilityLabel="Show search results with screen adaptations only"
-                onPress={() => setAdaptationsOnly((current) => !current)}
-                style={({ pressed }) => [
-                  styles.adaptationToggle,
-                  adaptationsOnly && styles.adaptationToggleActive,
-                  pressed && styles.pressed,
-                ]}>
-                <View
-                  style={[styles.toggleIndicator, adaptationsOnly && styles.toggleIndicatorActive]}
-                />
-                <ThemedText
-                  type="smallBold"
-                  style={
-                    adaptationsOnly
-                      ? styles.adaptationToggleActiveText
-                      : styles.adaptationToggleText
-                  }>
-                  Adaptations only
-                </ThemedText>
-              </Pressable>
+              <View style={styles.searchFilters}>
+                <Pressable
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: adaptationsOnly }}
+                  accessibilityLabel="Show search results with screen adaptations only"
+                  onPress={() => {
+                    setSurpriseBook(null);
+                    setAdaptationsOnly((current) => !current);
+                  }}
+                  style={({ pressed }) => [styles.adaptationToggle, pressed && styles.pressed]}>
+                  <ThemedText type="smallBold" style={styles.adaptationToggleText}>
+                    Adaptations only
+                  </ThemedText>
+                  <View style={[styles.toggleTrack, adaptationsOnly && styles.toggleTrackActive]}>
+                    <View
+                      style={[styles.toggleThumb, adaptationsOnly && styles.toggleThumbActive]}
+                    />
+                  </View>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: popularOnly }}
+                  accessibilityLabel="Show popular books only"
+                  onPress={() => {
+                    setSurpriseBook(null);
+                    setPopularOnly((current) => !current);
+                  }}
+                  style={({ pressed }) => [styles.adaptationToggle, pressed && styles.pressed]}>
+                  <ThemedText type="smallBold" style={styles.adaptationToggleText}>
+                    Popular only
+                  </ThemedText>
+                  <View style={[styles.toggleTrack, popularOnly && styles.toggleTrackActive]}>
+                    <View style={[styles.toggleThumb, popularOnly && styles.toggleThumbActive]} />
+                  </View>
+                </Pressable>
+              </View>
               {permission?.granted === false && (
                 <ThemedText type="small" style={styles.permissionText}>
                   Camera permission is required to scan. You can still search above.
@@ -703,6 +744,7 @@ const styles = StyleSheet.create({
   },
   headingCopy: {
     flex: 1,
+    marginTop: -Spacing.half,
     minWidth: 0,
     flexShrink: 1,
   },
@@ -712,16 +754,13 @@ const styles = StyleSheet.create({
     width: 56,
   },
   eyebrow: { color: '#117579', letterSpacing: 1.4 },
+  title: { marginTop: Spacing.half },
   addButton: {
     backgroundColor: '#173E32',
     borderRadius: 999,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two,
     flexShrink: 0,
-  },
-  shelfSummary: {
-    flexShrink: 1,
-    lineHeight: 18,
   },
   filters: {
     alignItems: 'center',
@@ -732,6 +771,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F4EEE6',
     borderRadius: 16,
     gap: Spacing.two,
+    marginTop: -Spacing.one,
     padding: Spacing.three,
   },
   shelfOverviewHeading: {
@@ -743,31 +783,38 @@ const styles = StyleSheet.create({
   adaptationToggle: {
     alignItems: 'center',
     alignSelf: 'flex-start',
-    borderColor: '#173E32',
-    borderRadius: 999,
-    borderWidth: 1,
     flexDirection: 'row',
     gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.one,
   },
-  adaptationToggleActive: {
-    backgroundColor: '#173E32',
+  searchFilters: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.three,
   },
   adaptationToggleText: {
     color: '#173E32',
   },
-  adaptationToggleActiveText: {
-    color: '#FFFFFF',
-  },
-  toggleIndicator: {
-    backgroundColor: '#B8C7C0',
+  toggleTrack: {
+    backgroundColor: '#C8CECB',
     borderRadius: 999,
-    height: 12,
-    width: 12,
+    height: 24,
+    justifyContent: 'center',
+    padding: 2,
+    width: 42,
   },
-  toggleIndicatorActive: {
-    backgroundColor: '#B9D29C',
+  toggleTrackActive: {
+    backgroundColor: '#173E32',
+  },
+  toggleThumb: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    height: 20,
+    width: 20,
+  },
+  toggleThumbActive: {
+    alignSelf: 'flex-end',
   },
   filterButton: {
     alignItems: 'center',

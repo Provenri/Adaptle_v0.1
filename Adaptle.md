@@ -42,12 +42,42 @@
 1. **Wikidata (Primary Adaptation Linker — CC0):**
    - Uses structured property **`P144` ("based on")** alongside book ISBN (`P212`), author (`P50`), and movie TMDB ID (`P4947`) via free SPARQL queries to pull verified book-to-movie pairs under **CC0 Public Domain**.
 2. **Open Library (Primary Bibliographic Catalog — CC0):**
-   - Pulls strictly uncopyrightable facts (`isbn_13`, `title`, `authors`, `publish_date`, `number_of_pages`, `subjects`) from Open Library's **CC0** dumps/API for both puzzle seeding and manual `+ Add Book` searches.
+   - Pulls strictly factual metadata (`isbn_13`, `title`, `authors`, `publish_date`, `number_of_pages`, `subjects`, edition count, reading-log count, rating count, and average rating) from Open Library's **CC0** dumps/API for puzzle seeding and manual `+ Add Book` searches.
+   - Manual searches check the internal `catalog_items` table first and fall back to Open Library, then Google Books. The **Popular only** option uses Open Library work-level activity as a popularity signal.
    - **Strict Exclusion:** Ignore Open Library's `description` field and external cover URLs.
 3. **Google Books API (Factual Fallback Only):**
    - Used only if a user scans a rare ISBN not present in Open Library, extracting strictly `title`, `authors`, `pageCount`, and `categories` (ignoring `description` and `imageLinks`).
 
 ### Auto-Generated Typographic Book Covers
+
+### Popular search ranking
+
+The optional **Popular only** filter ranks relevant Open Library results with a logarithmic score so books with very large reading logs do not dominate the result set:
+
+```text
+reading = log10(1 + readinglog_count)
+ratings = log10(1 + ratings_count)
+editions = log10(1 + edition_count)
+
+score = 0.60 × reading + 0.25 × ratings + 0.15 × editions
+score *= 0.90 + 0.10 × (ratings_average / 5) × min(ratings_count / 100, 1)
+```
+
+A result must have at least 1,000 reading-log entries, 50 ratings, and 5 editions. After these minimums, only the top 25% of qualifying, search-relevant results are returned (at least one when any result qualifies). Search relevance remains the first gate. `catalog_items` matches are enriched with the equivalent Open Library work metrics before this filter is applied.
+
+These fields are factual aggregate metadata. They are returned only for search ranking and are not persisted to the user's library. Google Books title results do not qualify for **Popular only**, because that source does not expose the same readership signal.
+
+### Book search cache
+
+Normalized `booksearch-proxy` responses are cached server-side in Supabase and are never readable by client roles:
+
+- title/author searches and adaptation lookups: 24 hours
+- **Popular only** searches: 6 hours
+- ISBN lookups: 7 days
+- successful empty results: 5 minutes
+- failed requests: not cached, so the next attempt can recover immediately
+
+The cache key includes the normalized query/action, both search filters, and a schema version. Expired rows are ignored and cleaned opportunistically. Only factual normalized book metadata is cached; descriptions and cover URLs remain excluded.
 
 To eliminate publisher cover copyright risk and broken external image URLs, every book cover is rendered dynamically in React Native SVG using uncopyrightable facts (**Title**, **Author**, and **Genre Theme**):
 

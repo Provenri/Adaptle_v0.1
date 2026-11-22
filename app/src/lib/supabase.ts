@@ -131,6 +131,7 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
         user_id: user.id,
         isbn13,
         status,
+        saved_at: new Date().toISOString(),
       },
       { onConflict: 'user_id,isbn13' }
     );
@@ -215,7 +216,7 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
   const { data, error } = await supabase
     .from('user_library')
     .select(
-      'isbn13,status,catalog_items(isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_keywords)'
+      'isbn13,status,saved_at,catalog_items(isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_keywords)'
     )
     .order('saved_at', { ascending: false });
   if (error) throw error;
@@ -232,6 +233,7 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
       genre: catalog.genre,
       coverTheme: catalog.cover_theme,
       status: row.status,
+      savedAt: Date.parse(row.saved_at),
       movieTitle: catalog.movie_title ?? undefined,
       movieYear: catalog.release_year ?? undefined,
       tmdbId: catalog.tmdb_id ?? undefined,
@@ -300,7 +302,8 @@ export async function fetchTmdbProviders(tmdbId: number, region = 'DE'): Promise
 
 export async function searchBookCatalog(
   query: string,
-  adaptationsOnly = false
+  adaptationsOnly = false,
+  popularOnly = false
 ): Promise<BookCandidate[]> {
   const normalized = query.trim();
   if (normalized.length < 2) return [];
@@ -312,7 +315,7 @@ export async function searchBookCatalog(
       ? `isbn=${encodeURIComponent(isbn13)}`
       : `q=${encodeURIComponent(normalized)}`;
   const payload = await invokeBookSearch(
-    `?action=${action}&${parameter}&adaptations_only=${adaptationsOnly ? 'true' : 'false'}`
+    `?action=${action}&${parameter}&adaptations_only=${adaptationsOnly ? 'true' : 'false'}&popular_only=${popularOnly ? 'true' : 'false'}`
   );
   return payload.items;
 }

@@ -132,31 +132,7 @@ function LibraryProvider({ children }: { children: ReactNode }) {
       scores,
       currentStreak: calculateStreak(scores),
       saveBook: (candidate, status = 'TO_BE_READ') => {
-        setBooks((current) => {
-          const existing = current.find((book) => book.isbn13 === candidate.isbn13);
-          if (existing) {
-            return current.map((book) =>
-              book.isbn13 === candidate.isbn13
-                ? {
-                    ...book,
-                    ...candidate,
-                    tmdbId: candidate.tmdbId ?? book.tmdbId,
-                    publicationYear: candidate.publicationYear ?? book.publicationYear,
-                    status,
-                  }
-                : book
-            );
-          }
-          return [
-            {
-              ...candidate,
-              tmdbId: candidate.tmdbId ?? undefined,
-              publicationYear: candidate.publicationYear ?? undefined,
-              status,
-            },
-            ...current,
-          ];
-        });
+        setBooks((current) => upsertBookAtFront(current, candidate, status));
         enqueueOfflineMutation({
           type: 'library-upsert',
           payload: { ...candidate, status },
@@ -221,8 +197,10 @@ export function mergeRemoteLibrary(remote: LibraryBook[], local: LibraryBook[]):
   const merged = remote.map((remoteBook) => {
     const localBook = localByIsbn.get(remoteBook.isbn13);
     if (!localBook) return remoteBook;
+    const savedAt = Math.max(remoteBook.savedAt ?? 0, localBook.savedAt ?? 0);
     return {
       ...remoteBook,
+      ...(savedAt > 0 ? { savedAt } : {}),
       publicationYear: remoteBook.publicationYear ?? localBook.publicationYear,
       tmdbId: remoteBook.tmdbId ?? localBook.tmdbId,
       moviePosterPath: remoteBook.moviePosterPath ?? localBook.moviePosterPath,
@@ -243,10 +221,34 @@ export function mergeRemoteLibrary(remote: LibraryBook[], local: LibraryBook[]):
   const localOnly = new Map(
     local.filter((book) => !remoteByIsbn.has(book.isbn13)).map((book) => [book.isbn13, book])
   );
-  return [
+  const combined = [
     ...local.filter((book) => localOnly.has(book.isbn13)),
     ...merged.filter((book) => !localOnly.has(book.isbn13)),
   ];
+  return combined.sort((a, b) => (b.savedAt ?? 0) - (a.savedAt ?? 0));
+}
+
+export function upsertBookAtFront(
+  books: LibraryBook[],
+  candidate: Omit<
+    BookCandidate,
+    'numberOfPages' | 'publicationYear' | 'subjects' | 'source' | 'tmdbId'
+  > & {
+    publicationYear?: number | null;
+    tmdbId?: number | null;
+  },
+  status: ShelfStatus = 'TO_BE_READ'
+): LibraryBook[] {
+  const existing = books.find((book) => book.isbn13 === candidate.isbn13);
+  const savedBook: LibraryBook = {
+    ...existing,
+    ...candidate,
+    tmdbId: candidate.tmdbId ?? existing?.tmdbId ?? undefined,
+    publicationYear: candidate.publicationYear ?? existing?.publicationYear,
+    savedAt: Date.now(),
+    status,
+  };
+  return [savedBook, ...books.filter((book) => book.isbn13 !== candidate.isbn13)];
 }
 
 function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
@@ -268,7 +270,8 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
     }
     const index = result.findIndex((book) => book.isbn13 === isbn13);
     if (index >= 0) {
-      result[index] = { ...result[index], status };
+      const [updated] = result.splice(index, 1);
+      result.unshift({ ...updated, savedAt: mutation.createdAt, status });
       continue;
     }
     if (
@@ -285,6 +288,7 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
         genre: typeof payload.genre === 'string' ? payload.genre : null,
         coverTheme: payload.coverTheme as LibraryBook['coverTheme'],
         status,
+        savedAt: mutation.createdAt,
         tmdbId: typeof payload.tmdbId === 'number' ? payload.tmdbId : undefined,
         moviePosterPath:
           typeof payload.moviePosterPath === 'string' ? payload.moviePosterPath : null,
@@ -309,7 +313,7 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
       });
     }
   }
-  return result;
+  return result.sort((a, b) => (b.savedAt ?? 0) - (a.savedAt ?? 0));
 }
 
 export function useLibrary(): LibraryContextValue {

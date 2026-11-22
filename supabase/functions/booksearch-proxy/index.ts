@@ -13,6 +13,7 @@ import { corsHeaders, errorResponse, jsonResponse } from '../_shared/http.ts';
 import { classifyCover } from '../_shared/cover-theme.ts';
 import {
   type BookCandidate,
+  filterPopularCandidates,
   fromGoogleBooksVolume,
   fromOpenLibraryDoc,
   type GoogleBooksVolume,
@@ -22,13 +23,22 @@ import {
 } from './normalize.ts';
 import { filterByAdaptation, resolveAdaptations } from './adaptation-resolver.ts';
 import { addPlayableCatalogFilters } from './practice-catalog.ts';
+import {
+  type BookSearchCacheDescriptor,
+  buildCacheInput,
+  cacheTtlSeconds,
+  cleanExpiredCacheEntries,
+  hashCacheInput,
+  readCachedPayload,
+  writeCachedPayload,
+} from './cache.ts';
 
 const OL_BASE = 'https://openlibrary.org';
 const GB_BASE = 'https://www.googleapis.com/books/v1';
 const UA = 'Adaptle/0.1 (https://github.com/Provenri/Adaptle_v0.1)';
 
-async function searchOpenLibrary(query: string): Promise<BookCandidate[]> {
-  const url = `${OL_BASE}/search.json?q=${encodeURIComponent(query)}&limit=10&fields=${
+async function searchOpenLibrary(query: string, limit = 10): Promise<BookCandidate[]> {
+  const url = `${OL_BASE}/search.json?q=${encodeURIComponent(query)}&limit=${limit}&fields=${
     [
       'title',
       'author_name',
@@ -36,6 +46,10 @@ async function searchOpenLibrary(query: string): Promise<BookCandidate[]> {
       'number_of_pages_median',
       'first_publish_year',
       'subject',
+      'edition_count',
+      'readinglog_count',
+      'ratings_count',
+      'ratings_average',
     ].join(',')
   }`;
   const response = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
@@ -48,7 +62,49 @@ async function searchOpenLibrary(query: string): Promise<BookCandidate[]> {
     .filter((candidate, index, all) =>
       all.findIndex((item) => item.isbn13 === candidate.isbn13) === index
     )
+    .slice(0, limit);
+}
+
+async function searchGoogleBooks(query: string): Promise<BookCandidate[]> {
+  const apiKey = Deno.env.get('GOOGLE_BOOKS_API_KEY');
+  const keyParameter = apiKey ? `&key=${encodeURIComponent(apiKey)}` : '';
+  const response = await fetch(
+    `${GB_BASE}/volumes?q=${encodeURIComponent(query)}&maxResults=10${keyParameter}`,
+    { headers: { Accept: 'application/json' } },
+  );
+  if (!response.ok) return [];
+  const data = await response.json();
+  const volumes: GoogleBooksVolume[] = data.items ?? [];
+  return volumes
+    .map((volume) => fromGoogleBooksVolume(volume, null))
+    .filter((candidate): candidate is BookCandidate => candidate !== null)
+    .filter((candidate, index, all) =>
+      all.findIndex((item) => item.isbn13 === candidate.isbn13) === index
+    )
     .slice(0, 10);
+}
+
+async function searchKnownCatalog(
+  query: string,
+  adaptationsOnly: boolean,
+): Promise<BookCandidate[]> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceKey) return [];
+
+  const url = new URL(`${supabaseUrl}/rest/v1/catalog_items`);
+  const term = `*${query.replaceAll(',', ' ')}*`;
+  url.searchParams.set('or', `(book_title.ilike.${term},author.ilike.${term})`);
+  url.searchParams.set('select', '*');
+  url.searchParams.set('limit', '10');
+  if (adaptationsOnly) addPlayableCatalogFilters(url);
+
+  const response = await fetch(url, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+  });
+  if (!response.ok) return [];
+  const rows: Array<Record<string, unknown>> = await response.json();
+  return rows.map(catalogRowToCandidate);
 }
 
 async function fetchJsonOrNull(url: string): Promise<Record<string, unknown> | null> {
@@ -136,23 +192,62 @@ Deno.serve(async (req) => {
     if (action === 'search') {
       const query = url.searchParams.get('q')?.trim();
       if (!query || query.length < 2) return errorResponse('q must be at least 2 characters', 400);
-      const candidates = await searchOpenLibrary(query);
       const adaptationsOnly = url.searchParams.get('adaptations_only') === 'true';
-      if (!adaptationsOnly) return jsonResponse({ items: candidates });
-      return jsonResponse({ items: filterByAdaptation(await resolveAdaptations(candidates)) });
+      const popularOnly = url.searchParams.get('popular_only') === 'true';
+      return await cachedItemsResponse({
+        action,
+        query,
+        adaptationsOnly,
+        popularOnly,
+      }, async () => {
+        const catalogCandidates = await searchKnownCatalog(query, adaptationsOnly);
+        if (catalogCandidates.length > 0 && !popularOnly) return catalogCandidates;
+        const openLibraryCandidates = await searchOpenLibrary(query, popularOnly ? 50 : 10);
+        const catalogByIsbn = new Map(
+          catalogCandidates.map((candidate) => [candidate.isbn13, candidate]),
+        );
+        const catalogByIdentity = new Map(
+          catalogCandidates.map((candidate) => [candidateIdentity(candidate), candidate]),
+        );
+        const enrichedCatalogCandidates = openLibraryCandidates
+          .map((candidate) => {
+            const catalogCandidate = catalogByIsbn.get(candidate.isbn13) ??
+              catalogByIdentity.get(candidateIdentity(candidate));
+            return catalogCandidate ? { ...catalogCandidate, ...candidate } : null;
+          })
+          .filter((candidate): candidate is BookCandidate => candidate !== null);
+        let candidates = catalogCandidates.length > 0
+          ? enrichedCatalogCandidates
+          : openLibraryCandidates;
+        if (popularOnly) candidates = filterPopularCandidates(candidates);
+        const fallbackCandidates = candidates.length > 0
+          ? candidates
+          : popularOnly
+          ? []
+          : await searchGoogleBooks(query);
+        return adaptationsOnly
+          ? filterByAdaptation(await resolveAdaptations(fallbackCandidates))
+          : fallbackCandidates;
+      });
     }
 
     if (action === 'isbn') {
       const isbn13 = normalizeIsbn13(url.searchParams.get('isbn') ?? '');
       if (!isbn13) return errorResponse('isbn must be a valid ISBN-13', 400);
-      const candidate = (await lookupOpenLibraryIsbn(isbn13)) ??
-        (await lookupGoogleBooksIsbn(isbn13));
-      if (!candidate) return jsonResponse({ items: [] });
       const adaptationsOnly = url.searchParams.get('adaptations_only') === 'true';
-      const items = adaptationsOnly
-        ? filterByAdaptation(await resolveAdaptations([candidate]))
-        : [candidate];
-      return jsonResponse({ items });
+      return await cachedItemsResponse({
+        action,
+        isbn: isbn13,
+        adaptationsOnly,
+        popularOnly: false,
+      }, async () => {
+        const candidate = (await lookupOpenLibraryIsbn(isbn13)) ??
+          (await lookupGoogleBooksIsbn(isbn13));
+        if (!candidate) return [];
+        return adaptationsOnly
+          ? filterByAdaptation(await resolveAdaptations([candidate]))
+          : [candidate];
+      });
     }
 
     if (action === 'random') {
@@ -167,10 +262,19 @@ Deno.serve(async (req) => {
       if (!isbn13 && (!title || !author)) {
         return errorResponse('isbn or title and author are required', 400);
       }
-      const candidate = isbn13 ? await lookupKnownCatalogAdaptationByIsbn(isbn13) : null;
-      const resolved = candidate ??
-        (title && author ? await lookupKnownCatalogAdaptation(title, author) : null);
-      return jsonResponse({ items: resolved ? [resolved] : [] });
+      return await cachedItemsResponse({
+        action,
+        isbn: isbn13 ?? undefined,
+        title,
+        author,
+        adaptationsOnly: true,
+        popularOnly: false,
+      }, async () => {
+        const candidate = isbn13 ? await lookupKnownCatalogAdaptationByIsbn(isbn13) : null;
+        const resolved = candidate ??
+          (title && author ? await lookupKnownCatalogAdaptation(title, author) : null);
+        return resolved ? [resolved] : [];
+      });
     }
 
     return errorResponse('action must be "search" or "isbn"', 400);
@@ -178,6 +282,28 @@ Deno.serve(async (req) => {
     return errorResponse('book lookup failed', 502);
   }
 });
+
+async function cachedItemsResponse(
+  descriptor: BookSearchCacheDescriptor,
+  loadItems: () => Promise<BookCandidate[]>,
+): Promise<Response> {
+  void cleanExpiredCacheEntries();
+  const cacheKey = await hashCacheInput(buildCacheInput(descriptor));
+  const cached = await readCachedPayload(cacheKey);
+  if (isCachedItemsPayload(cached)) return jsonResponse(cached);
+
+  const items = await loadItems();
+  const payload = { items };
+  await writeCachedPayload(cacheKey, payload, cacheTtlSeconds(descriptor, items.length));
+  return jsonResponse(payload);
+}
+
+function isCachedItemsPayload(value: unknown): value is { items: BookCandidate[] } {
+  return typeof value === 'object' &&
+    value !== null &&
+    'items' in value &&
+    Array.isArray(value.items);
+}
 
 async function lookupKnownCatalogAdaptationByIsbn(
   isbn13: string,
@@ -220,6 +346,7 @@ async function lookupKnownCatalogAdaptation(
 }
 
 function catalogRowToCandidate(row: Record<string, unknown>): BookCandidate {
+  const tmdbId = typeof row.tmdb_id === 'number' ? row.tmdb_id : undefined;
   return {
     isbn13: String(row.isbn13),
     title: String(row.book_title),
@@ -230,8 +357,8 @@ function catalogRowToCandidate(row: Record<string, unknown>): BookCandidate {
     coverTheme: classifyCover(row.genre ? [String(row.genre)] : []).coverTheme,
     subjects: row.genre ? [String(row.genre)] : [],
     source: 'openlibrary_manual',
-    hasAdaptation: true,
-    tmdbId: Number(row.tmdb_id),
+    hasAdaptation: tmdbId !== undefined,
+    tmdbId,
     movieTitle: row.movie_title ? String(row.movie_title) : undefined,
     releaseYear: typeof row.release_year === 'number' ? row.release_year : null,
     director: row.director ? String(row.director) : null,
@@ -248,6 +375,14 @@ function catalogRowToCandidate(row: Record<string, unknown>): BookCandidate {
       ? row.premise_keywords.filter((value): value is string => typeof value === 'string')
       : undefined,
   };
+}
+
+function candidateIdentity(candidate: Pick<BookCandidate, 'title' | 'author'>): string {
+  return `${normalizeSearchLabel(candidate.title)}|${normalizeSearchLabel(candidate.author)}`;
+}
+
+function normalizeSearchLabel(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
 async function randomAdaptation(): Promise<BookCandidate | null> {

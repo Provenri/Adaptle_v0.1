@@ -1,6 +1,7 @@
 import { assertEquals } from 'jsr:@std/assert@1';
 
 import {
+  filterPopularCandidates,
   fromGoogleBooksVolume,
   fromOpenLibraryDoc,
   normalizeIsbn13,
@@ -26,6 +27,8 @@ Deno.test('fromOpenLibraryDoc picks the first ISBN-13 and classifies the theme',
   assertEquals(candidate?.coverTheme, 'nonfiction_forest');
   assertEquals(candidate?.source, 'openlibrary_manual');
   assertEquals(candidate?.publicationYear, 2018);
+  assertEquals(candidate?.readingLogCount, undefined);
+  assertEquals(typeof candidate?.popularityScore, 'number');
 });
 
 Deno.test('fromOpenLibraryDoc rejects docs without ISBN-13, title, or author', () => {
@@ -52,6 +55,43 @@ Deno.test('fromGoogleBooksVolume reads factual fields and falls back to the requ
   assertEquals(candidate?.coverTheme, 'thriller_navy');
   assertEquals(candidate?.source, 'googlebooks_manual');
   assertEquals(candidate?.publicationYear, 2019);
+});
+
+Deno.test('fromGoogleBooksVolume requires an ISBN for title search results', () => {
+  const candidate = fromGoogleBooksVolume(
+    {
+      volumeInfo: {
+        title: 'A Book Without Identifiers',
+        authors: ['An Author'],
+      },
+    },
+    null,
+  );
+  assertEquals(candidate, null);
+});
+
+Deno.test('popular filtering requires sufficient readership and keeps the top quartile', () => {
+  const base = fromOpenLibraryDoc({
+    title: 'Popular',
+    author_name: ['Author'],
+    isbn: ['9780735211292'],
+  })!;
+  const candidates = [4, 3, 2, 1].map((multiplier) => ({
+    ...base,
+    isbn13: `978000000000${multiplier}`,
+    popularityScore: multiplier,
+    readingLogCount: 1_000 * multiplier,
+    ratingsCount: 100,
+    editionCount: 10,
+  }));
+  const unpopular = { ...base, isbn13: '9780000000009', readingLogCount: 999 };
+
+  assertEquals(
+    filterPopularCandidates([...candidates, unpopular]).map((candidate) => candidate.isbn13),
+    [
+      '9780000000004',
+    ],
+  );
 });
 
 Deno.test('playable catalog filters require complete premise practice metadata', () => {

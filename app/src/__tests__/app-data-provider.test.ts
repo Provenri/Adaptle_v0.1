@@ -1,4 +1,5 @@
-import { mergeRemoteLibrary } from '@/providers/app-data-provider';
+import { mergeRemoteLibrary, upsertBookAtFront } from '@/providers/app-data-provider';
+import { findExistingLibraryMatch } from '@/data/library-data';
 import type { LibraryBook } from '@/data/library-data';
 
 jest.mock('react-native-mmkv', () => {
@@ -49,5 +50,50 @@ describe('library refresh merging', () => {
       status: 'READING',
       storyPremise: localBook.storyPremise,
     });
+  });
+
+  it('sorts remote and local books by the newest save timestamp', () => {
+    const olderRemote: LibraryBook = {
+      ...localBook,
+      isbn13: '9780000000002',
+      title: 'Older remote book',
+      savedAt: 100,
+    };
+    const newerLocal: LibraryBook = { ...localBook, savedAt: 200 };
+
+    expect(mergeRemoteLibrary([olderRemote], [newerLocal, olderRemote])).toEqual([
+      expect.objectContaining(newerLocal),
+      expect.objectContaining(olderRemote),
+    ]);
+  });
+
+  it('moves an already saved book to the front when it is added again', () => {
+    const dune: LibraryBook = {
+      ...localBook,
+      isbn13: '9780441172719',
+      title: 'Dune',
+      author: 'Frank Herbert',
+    };
+    const result = upsertBookAtFront([localBook, dune], dune, 'READING');
+
+    expect(result.map((book) => book.isbn13)).toEqual([dune.isbn13, localBook.isbn13]);
+    expect(result[0].status).toBe('READING');
+  });
+
+  it('matches the same work even when the ISBN is from another edition', () => {
+    const savedDune: LibraryBook = {
+      ...localBook,
+      isbn13: '9780441172719',
+      title: 'Dune',
+      author: 'Frank Herbert',
+    };
+
+    expect(
+      findExistingLibraryMatch([savedDune], {
+        isbn13: '9780340960196',
+        title: 'Dune',
+        author: 'Frank Herbert',
+      })
+    ).toBe(savedDune);
   });
 });

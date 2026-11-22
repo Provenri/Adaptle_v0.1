@@ -255,7 +255,7 @@ function DailyGame({
                 source={APP_ICON}
                 style={styles.headerLogo}
               />
-              <View>
+              <View style={styles.headingCopy}>
                 <ThemedText type="smallBold" style={styles.eyebrow}>
                   ADAPTLE #{dailyPuzzle.id}
                 </ThemedText>
@@ -265,9 +265,6 @@ function DailyGame({
                     : state.phase === 'complete'
                       ? 'Daily complete'
                       : `Round ${state.roundIndex + 1} of 5`}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.bookMeta}>
-                  Current round potential: {getRoundPotential(state.hintsUsed)} PTS
                 </ThemedText>
               </View>
             </View>
@@ -944,6 +941,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.two,
   },
+  headingCopy: {
+    marginTop: -Spacing.half,
+  },
   headerLogo: {
     borderRadius: 14,
     height: 56,
@@ -962,6 +962,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     flexDirection: 'row',
     gap: Spacing.three,
+    marginTop: -Spacing.one,
     padding: Spacing.three,
   },
   roundSteps: { alignItems: 'center', flexDirection: 'row', gap: Spacing.one },
@@ -1008,10 +1009,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     textTransform: 'uppercase',
-  },
-  bookMeta: {
-    fontSize: 13,
-    lineHeight: 18,
   },
   section: {
     gap: Spacing.two,

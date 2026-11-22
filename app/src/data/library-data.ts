@@ -10,6 +10,7 @@ export type LibraryBook = {
   genre: string | null;
   coverTheme: CoverTheme;
   status: ShelfStatus;
+  savedAt?: number;
   tmdbId?: number;
   moviePosterPath?: string | null;
   movieTitle?: string;
@@ -42,6 +43,12 @@ export type BookCandidate = Omit<
   publicationYear: number | null;
   subjects: readonly string[];
   source: 'openlibrary_manual' | 'googlebooks_manual';
+  popularityScore?: number;
+  isPopular?: boolean;
+  readingLogCount?: number;
+  ratingsCount?: number;
+  editionCount?: number;
+  ratingsAverage?: number;
 };
 
 export const SHELF_LABELS: Record<ShelfStatus, string> = {
@@ -49,3 +56,25 @@ export const SHELF_LABELS: Record<ShelfStatus, string> = {
   READING: 'Reading',
   FINISHED: 'Finished',
 };
+
+export function findExistingLibraryMatch(
+  books: LibraryBook[],
+  candidate: Pick<BookCandidate, 'isbn13' | 'title' | 'author'>
+): LibraryBook | undefined {
+  const exact = books.find((book) => book.isbn13 === candidate.isbn13);
+  if (exact) return exact;
+
+  const identity = normalizeBookIdentity(candidate.title, candidate.author);
+  return books.find((book) => normalizeBookIdentity(book.title, book.author) === identity);
+}
+
+function normalizeBookIdentity(title: string, author: string): string {
+  const normalize = (value: string) =>
+    value
+      .normalize('NFKD')
+      .toLocaleLowerCase()
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  return `${normalize(title)}|${normalize(author)}`;
+}

@@ -149,6 +149,7 @@ describe('tab screens', () => {
     const { getAllByText, getByText, queryByText } = await renderScreen(<PlayScreen />);
     expect(getByText(/ADAPTLE/)).toBeTruthy();
     expect(getByText('1 of 5 rounds')).toBeTruthy();
+    expect(queryByText(/Current round potential/)).toBeNull();
     expect(getByText("What is the story's one-line premise?")).toBeTruthy();
     expect(getByText('Source book')).toBeTruthy();
     expect(getByText('Screen')).toBeTruthy();
@@ -212,7 +213,7 @@ describe('tab screens', () => {
 
   it('renders the My Library screen', async () => {
     const screen = await renderScreen(<LibraryScreen />);
-    expect(screen.getByText('1 book saved · 1 screen adaptation')).toBeTruthy();
+    expect(screen.queryByText('1 book saved · 1 screen adaptation')).toBeNull();
     expect(screen.getByText('Shelf overview')).toBeTruthy();
     expect(screen.getByText('1 playable')).toBeTruthy();
     expect(screen.getByText('Do Androids Dream of Electric Sheep?')).toBeTruthy();
@@ -277,7 +278,7 @@ describe('tab screens', () => {
     await fireEvent.press(await screen.findByText('Project Hail Mary'));
 
     expect(screen.queryByLabelText('Search book catalog')).toBeNull();
-    expect(screen.getByText('2 books saved · 1 screen adaptation')).toBeTruthy();
+    expect(screen.queryByText('2 books saved · 1 screen adaptation')).toBeNull();
     expect(screen.getByText('Project Hail Mary')).toBeTruthy();
   });
 
@@ -298,11 +299,17 @@ describe('tab screens', () => {
       screen.getByRole('switch', { name: 'Show search results with screen adaptations only' }).props
         .accessibilityState
     ).toEqual({ checked: true });
+
+    await fireEvent.press(screen.getByRole('switch', { name: 'Show popular books only' }));
+    expect(
+      screen.getByRole('switch', { name: 'Show popular books only' }).props.accessibilityState
+    ).toEqual({ checked: true });
   });
 
   it('shows a surprise adaptation candidate without search input', async () => {
     const screen = await renderScreen(<LibraryScreen />);
     await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Show popular books only' }));
     await fireEvent.press(screen.getByRole('button', { name: /Surprise me/ }));
 
     expect(await screen.findByText('Dune')).toBeTruthy();
