@@ -89,10 +89,15 @@ export function AdaptationPractice({
             {details.characters ? (
               <ThemedText type="small">Characters: {details.characters}</ThemedText>
             ) : null}
-            <ThemedText type="small">
-              Correct answer: {choices.find((c) => c.id === correctChoiceId)?.label}
-            </ThemedText>
           </View>
+        </View>
+        <View style={styles.correctAnswer}>
+          <ThemedText type="smallBold" style={styles.correctAnswerLabel}>
+            Correct premise
+          </ThemedText>
+          <ThemedText type="small">
+            {choices.find((choice) => choice.id === correctChoiceId)?.label ?? details.premiseShort}
+          </ThemedText>
         </View>
         <StoryPremise text={details.storyPremise} />
         <PracticeButton label="Close practice" onPress={onClose} />
@@ -173,6 +178,19 @@ const styles = StyleSheet.create({
   },
   poster: { aspectRatio: 2 / 3, borderRadius: 8, width: 90 },
   revealCopy: { flex: 1, gap: Spacing.one },
+  correctAnswer: {
+    backgroundColor: '#E6F1ED',
+    borderColor: '#B8C9BD',
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: Spacing.one,
+    padding: Spacing.three,
+  },
+  correctAnswerLabel: {
+    color: '#117579',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
   button: {
     alignItems: 'center',
     backgroundColor: '#173E32',

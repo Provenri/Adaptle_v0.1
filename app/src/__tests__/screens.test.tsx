@@ -254,6 +254,16 @@ describe('tab screens', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Unlock final clue · 1 pt' }));
     expect(screen.getByText('humanity · engineered fugitives')).toBeTruthy();
 
+    await fireEvent.press(
+      screen.getByLabelText(
+        'Answer A: A weary hunter questions humanity while pursuing engineered fugitives.'
+      )
+    );
+    expect(screen.getByText('Correct premise')).toBeTruthy();
+    expect(
+      screen.getByText('A weary hunter questions humanity while pursuing engineered fugitives.')
+    ).toBeTruthy();
+
     practiceSpy.mockRestore();
   });
 
