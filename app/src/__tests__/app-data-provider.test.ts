@@ -4,6 +4,7 @@ import {
   upsertBookAtFront,
 } from '@/providers/app-data-provider';
 import { findExistingLibraryMatch } from '@/data/library-data';
+import { hasPlayableAdaptation } from '@/data/library-data';
 import type { LibraryBook } from '@/data/library-data';
 
 jest.mock('react-native-mmkv', () => {
@@ -122,6 +123,28 @@ describe('library refresh merging', () => {
       movieTitle: 'Adapted film',
       movieYear: 2010,
     });
+  });
+
+  it('requires complete premise metadata for adaptation practice', () => {
+    expect(
+      hasPlayableAdaptation({
+        ...localBook,
+        tmdbId: 1,
+        movieTitle: 'Adaptation',
+      })
+    ).toBe(false);
+    expect(
+      hasPlayableAdaptation({
+        ...localBook,
+        tmdbId: 1,
+        movieTitle: 'Adaptation',
+        settingHint: 'A setting',
+        characterHint: 'Two roles',
+        premiseShort: 'A central situation.',
+        premiseDecoys: ['A false situation.', 'Another false situation.'],
+        premiseKeywords: ['central', 'situation'],
+      })
+    ).toBe(true);
   });
 
   it('updates status without changing shelf order or save timestamp', () => {

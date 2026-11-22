@@ -59,6 +59,18 @@ export const SHELF_LABELS: Record<ShelfStatus, string> = {
   FINISHED: 'Finished',
 };
 
+export function hasPlayableAdaptation(book: LibraryBook): boolean {
+  return Boolean(
+    book.tmdbId &&
+    book.movieTitle &&
+    book.settingHint?.trim() &&
+    book.characterHint?.trim() &&
+    book.premiseShort?.trim() &&
+    book.premiseDecoys?.length === 2 &&
+    (book.premiseKeywords?.length ?? 0) >= 2
+  );
+}
+
 export function findExistingLibraryMatch(
   books: LibraryBook[],
   candidate: Pick<BookCandidate, 'isbn13' | 'title' | 'author'>

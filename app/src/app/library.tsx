@@ -27,6 +27,7 @@ import { APP_ICON } from '@/assets';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
 import {
   findExistingLibraryMatch,
+  hasPlayableAdaptation,
   SHELF_LABELS,
   type BookCandidate,
   type LibraryBook,
@@ -218,7 +219,7 @@ export default function LibraryScreen() {
                     )
                   }
                   onPractice={
-                    book.tmdbId || book.movieTitle
+                    hasPlayableAdaptation(book)
                       ? () =>
                           setPracticeBook({
                             isbn13: book.isbn13,
