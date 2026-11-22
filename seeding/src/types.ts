@@ -67,8 +67,17 @@ export const HintedBookSchema = TmdbEnrichedSchema.extend({
   characterHint: z.string().min(1),
   storyPremise: z.string().min(1).max(240),
   premiseShort: z.string().min(1).max(70),
+  premiseDecoys: z.array(z.string().min(1).max(70)).length(2),
   premiseKeywords: z.array(z.string().min(1).max(24)).min(2).max(6),
-});
+}).refine(
+  (book) =>
+    new Set(
+      [book.premiseShort, ...book.premiseDecoys].map((value) =>
+        value.trim().toLocaleLowerCase(),
+      ),
+    ).size === 3,
+  { message: "Premise answer and decoys must be distinct" },
+);
 export type HintedBook = z.infer<typeof HintedBookSchema>;
 
 export const THREAD_CATEGORIES = [

@@ -1,4 +1,4 @@
-export const BOOK_SEARCH_CACHE_VERSION = 2;
+export const BOOK_SEARCH_CACHE_VERSION = 3;
 
 export type BookSearchCacheDescriptor = {
   action: string;

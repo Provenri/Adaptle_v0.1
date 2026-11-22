@@ -155,6 +155,7 @@ export function toCatalogRow(item: ScheduledBook): Record<string, unknown> {
     character_hint: book.characterHint,
     story_premise: book.storyPremise,
     premise_short: book.premiseShort,
+    premise_decoys: book.premiseDecoys,
     premise_keywords: book.premiseKeywords,
     scheduled_date: scheduledDate,
   };

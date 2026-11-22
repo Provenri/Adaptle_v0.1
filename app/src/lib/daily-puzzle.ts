@@ -24,6 +24,7 @@ export type CatalogRow = {
   character_hint: string | null;
   story_premise: string | null;
   premise_short: string | null;
+  premise_decoys: unknown;
   premise_keywords: unknown;
 };
 
@@ -104,7 +105,7 @@ export async function fetchAdaptationPractice(
   await initializeAnonymousSession();
 
   const select =
-    'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise,premise_short,premise_keywords';
+    'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise,premise_short,premise_decoys,premise_keywords';
   let { data: target, error: targetError } = await supabase
     .from('catalog_items')
     .select(select)
@@ -178,7 +179,7 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const { data: rows, error: booksError } = await supabase
     .from('catalog_items')
     .select(
-      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise,premise_short,premise_keywords'
+      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise,premise_short,premise_decoys,premise_keywords'
     )
     .eq('scheduled_date', puzzleDate)
     .order('isbn13', { ascending: true });
@@ -224,7 +225,7 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const { data: bonusRows, error: bonusError } = await supabase
     .from('catalog_items')
     .select(
-      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise,premise_short,premise_keywords'
+      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise,premise_short,premise_decoys,premise_keywords'
     )
     .in('isbn13', bonusIsbns);
   if (bonusError) throw bonusError;
@@ -365,6 +366,7 @@ function catalogRowFromCandidate(candidate: BookCandidate): CatalogRow {
     character_hint: candidate.characterHint ?? null,
     story_premise: candidate.storyPremise ?? null,
     premise_short: candidate.premiseShort ?? null,
+    premise_decoys: candidate.premiseDecoys ?? null,
     premise_keywords: candidate.premiseKeywords ?? null,
   };
 }
@@ -400,6 +402,22 @@ function selectPremiseDecoys(
     );
   const selected: GameChoice[] = [];
   const seenLabels = new Set([correctLabel.toLowerCase()]);
+  const tailored = readPremiseDecoys(target.premise_decoys)
+    .filter((label) => normalizeCatalogLabel(label).toLowerCase() !== correctLabel.toLowerCase())
+    .filter(
+      (label, index, labels) =>
+        labels.findIndex(
+          (candidate) =>
+            normalizeCatalogLabel(candidate).toLowerCase() ===
+            normalizeCatalogLabel(label).toLowerCase()
+        ) === index
+    );
+  if (tailored.length === 2) {
+    return tailored.map((label, index) => ({
+      id: `${target.isbn13}-premise-decoy-${index + 1}`,
+      label,
+    }));
+  }
   const ordered = [
     ...shuffleChoices(
       eligible.filter((candidate) => candidate.genre === target.genre).map(toPremiseChoice),
@@ -421,6 +439,15 @@ function selectPremiseDecoys(
     throw new PuzzleUnavailableError('Premise choices are not ready yet.');
   }
   return selected;
+}
+
+function readPremiseDecoys(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const labels = value.filter(
+    (item): item is string =>
+      typeof item === 'string' && item.trim().length > 0 && item.length <= 70
+  );
+  return labels.length === 2 ? labels : [];
 }
 
 function readOptionalStringArray(value: unknown): string[] {

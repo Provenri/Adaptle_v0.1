@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { buildPremisePrompt } from "../steps/backfill-story-premises.js";
 import { buildHintPrompt, HINT_JSON_SCHEMA } from "../steps/generate-hints.js";
 import {
+  buildPremiseReviewPrompt,
+  PREMISE_REVIEW_SCHEMA,
+} from "../steps/premise-quality.js";
+import {
   buildThreadPrompt,
   selectCandidatePairs,
   type CandidatePair,
@@ -37,6 +41,10 @@ function makeBook(overrides: Partial<HintedBook>): HintedBook {
     storyPremise:
       "An unlikely pair confront a changing world and its hidden costs.",
     premiseShort: "A pair confronts a changing world and its hidden costs.",
+    premiseDecoys: [
+      "A pair hides a dangerous discovery from a changing world.",
+      "Two rivals protect their home from an approaching disaster.",
+    ],
     premiseKeywords: ["changing world", "hidden costs"],
     ...overrides,
   };
@@ -69,9 +77,25 @@ describe("buildHintPrompt", () => {
       "setting_hint",
       "character_hint",
       "premise_short",
+      "premise_decoys",
       "premise_keywords",
     ]);
     expect(HINT_JSON_SCHEMA.additionalProperties).toBe(false);
+  });
+
+  it("reviews decoys for synonymous or unrelated false choices", () => {
+    const prompt = buildPremiseReviewPrompt(
+      "The Miseducation of Cameron Post",
+      "Emily M. Danforth",
+      "A teen is sent to a religious camp for being queer.",
+      [
+        "A teen is sent to a conversion clinic to change their sexuality.",
+        "A teen is sent abroad after an argument with family.",
+      ],
+    );
+    expect(prompt).toContain("could also be true");
+    expect(prompt).toContain("alternate phrasing");
+    expect(PREMISE_REVIEW_SCHEMA.required).toEqual(["premise_decoys"]);
   });
 });
 

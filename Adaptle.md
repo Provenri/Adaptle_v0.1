@@ -356,6 +356,9 @@ Saved 2 books to my shelf!
    - `lead_characters` (JSONB — e.g., `["Rick Deckard", "Rachael"]`)
    - `setting_hint` (TEXT — Hint 1)
    - `character_hint` (TEXT — Hint 2)
+   - `premise_short` (TEXT — correct one-line answer, maximum 70 characters)
+   - `premise_decoys` (TEXT[] — exactly two distinct tailored false premises)
+   - `premise_keywords` (TEXT[] — final-hint keywords)
    - `scheduled_date` (DATE, NULLABLE)
 
 2. **`common_thread_pairs`**
@@ -390,20 +393,30 @@ Saved 2 books to my shelf!
 
 ## 7. Offline Seeding Prompts (Run Locally Once)
 
-### Prompt A: Generate Hint 1 & Hint 2 (`seed_puzzle_hints.txt`)
+### Prompt A: Generate premise choices and hints (`seed_puzzle_hints.txt`)
 
 _Input strictly factual Book Title + Author from Wikidata/Open Library—never pass TMDB text into an LLM._
 
 ```text
 You are creating factual, spoiler-free trivia hints for the book "{{book_title}}" by {{author_name}} and its screen adaptation.
 
-Generate two short, original hints:
-1. setting_hint: A 4-to-8-word factual description of when and where the story takes place (e.g., "Dystopian 2019 Los Angeles" or "A Martian habitat in the near future").
-2. character_hint: A 6-to-12-word factual description of the two lead characters' roles without naming them or spoiling the ending (e.g., "A weary detective and an experimental android").
+Generate original, spoiler-free puzzle content:
+1. story_premise: A 14-to-24-word central premise.
+2. setting_hint: A 4-to-8-word factual when/where description.
+3. character_hint: A 6-to-12-word factual description of the lead roles.
+4. premise_short: The correct one-line answer, at most 70 characters.
+5. premise_decoys: Exactly two false premises, each at most 70 characters, plausible for the same book and genre and comparable to the correct answer in length, structure, and specificity.
+6. premise_keywords: Two to four spoiler-free words or phrases from the correct premise.
 
 STRICT RULES:
 - Use completely original, neutral wording—never copy publisher blurbs or movie synopses.
-- Keep both hints strictly spoiler-free.
+- Keep every field strictly spoiler-free and exclude titles, creator names, character names, outcomes, twists, and endings.
+- Make the decoys genuinely false by changing the central conflict, role, setting, or objective; never borrow an unrelated book's premise.
+- Return three distinct premise labels.
+
+After generation, a strict second-pass editor reviews the decoys for semantic
+equivalence with the correct premise, unrelated story drift, spoilers, and
+unlike-length wording. Only the reviewed pair is eligible for upload.
 ```
 
 ### Prompt B: Generate Round 6 Common Thread Pairs (`seed_common_thread.txt`)

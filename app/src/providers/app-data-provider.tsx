@@ -212,6 +212,7 @@ export function mergeRemoteLibrary(remote: LibraryBook[], local: LibraryBook[]):
       characterHint: remoteBook.characterHint ?? localBook.characterHint,
       storyPremise: remoteBook.storyPremise ?? localBook.storyPremise,
       premiseShort: remoteBook.premiseShort ?? localBook.premiseShort,
+      premiseDecoys: remoteBook.premiseDecoys ?? localBook.premiseDecoys,
       premiseKeywords: remoteBook.premiseKeywords ?? localBook.premiseKeywords,
     };
   });
@@ -299,6 +300,9 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
           typeof payload.characterHint === 'string' ? payload.characterHint : undefined,
         storyPremise: typeof payload.storyPremise === 'string' ? payload.storyPremise : undefined,
         premiseShort: typeof payload.premiseShort === 'string' ? payload.premiseShort : undefined,
+        premiseDecoys: Array.isArray(payload.premiseDecoys)
+          ? payload.premiseDecoys.filter((value): value is string => typeof value === 'string')
+          : undefined,
         premiseKeywords: Array.isArray(payload.premiseKeywords)
           ? payload.premiseKeywords.filter(
               (value): value is string => typeof value === 'string' && value.length > 0

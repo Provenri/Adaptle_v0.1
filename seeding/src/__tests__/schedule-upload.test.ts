@@ -37,6 +37,10 @@ function makeBook(isbn13: string): HintedBook {
     characterHint: "characters",
     storyPremise: "Two strangers pursue a dangerous truth.",
     premiseShort: "Two strangers pursue a dangerous truth.",
+    premiseDecoys: [
+      "Two rivals protect a secret from a dangerous enemy.",
+      "Strangers race to recover what their town has lost.",
+    ],
     premiseKeywords: ["strangers", "dangerous truth"],
   };
 }
@@ -137,6 +141,10 @@ describe("row mappers", () => {
       lead_characters: ["A", "B"],
       setting_hint: "setting",
       premise_short: "Two strangers pursue a dangerous truth.",
+      premise_decoys: [
+        "Two rivals protect a secret from a dangerous enemy.",
+        "Strangers race to recover what their town has lost.",
+      ],
       premise_keywords: ["strangers", "dangerous truth"],
       scheduled_date: "2026-12-01",
       metadata_source: "wikidata_openlibrary",

@@ -108,6 +108,9 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
           : null,
         premise_short:
           typeof mutation.payload.premiseShort === 'string' ? mutation.payload.premiseShort : null,
+        premise_decoys: Array.isArray(mutation.payload.premiseDecoys)
+          ? mutation.payload.premiseDecoys
+          : null,
         premise_keywords: Array.isArray(mutation.payload.premiseKeywords)
           ? mutation.payload.premiseKeywords
           : null,
@@ -216,7 +219,7 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
   const { data, error } = await supabase
     .from('user_library')
     .select(
-      'isbn13,status,saved_at,catalog_items(isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_keywords)'
+      'isbn13,status,saved_at,catalog_items(isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_decoys,premise_keywords)'
     )
     .order('saved_at', { ascending: false });
   if (error) throw error;
@@ -244,6 +247,9 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
       characterHint: catalog.character_hint ?? undefined,
       storyPremise: catalog.story_premise ?? undefined,
       premiseShort: catalog.premise_short ?? undefined,
+      premiseDecoys: Array.isArray(catalog.premise_decoys)
+        ? catalog.premise_decoys.filter((value): value is string => typeof value === 'string')
+        : undefined,
       premiseKeywords: Array.isArray(catalog.premise_keywords)
         ? catalog.premise_keywords.filter(
             (value): value is string => typeof value === 'string' && value.length > 0

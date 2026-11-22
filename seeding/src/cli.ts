@@ -29,7 +29,7 @@ Steps:
                         (needs OPENAI_API_KEY); dry-run by default
   reshuffle-schedule    Rebalance book dates while preserving bonus eligibility
   rebalance-threads     Move bonuses to prioritize prior book exposure
-  backfill-premise-puzzles Generate short premise answers + keyword hints; dry-run by default
+  backfill-premise-puzzles Generate tailored premise answers, two decoys + keyword hints; dry-run by default
 
 Options:
   --limit <n>           Max items to process (dev mode; default 500 for fetch-wikidata)
@@ -37,6 +37,8 @@ Options:
   --start-date <date>   schedule-and-upload: first puzzle date YYYY-MM-DD (default: tomorrow CET)
   --all-languages       fetch-wikidata: include non-English-language books
   --apply               Apply verified metadata/imports
+  --refresh-decoys      backfill-premise-puzzles: review and replace existing decoys
+  --isbn <isbn13>       Restrict metadata backfill to one ISBN-13
   --dry-run             Preview schedule-and-upload without writing to Supabase
   --film-year-from <n>  popular-catalog-batch: minimum film release year
   --film-year-to <n>    popular-catalog-batch: maximum film release year
@@ -57,6 +59,8 @@ async function main() {
       "all-languages": { type: "boolean", default: false },
       apply: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
+      "refresh-decoys": { type: "boolean", default: false },
+      isbn: { type: "string" },
       "film-year-from": { type: "string" },
       "film-year-to": { type: "string" },
       "end-date": { type: "string" },
@@ -157,7 +161,12 @@ async function main() {
       break;
     case "backfill-premise-puzzles":
     case "backfill-story-premises":
-      await backfillPremisePuzzles({ limit, apply: values.apply });
+      await backfillPremisePuzzles({
+        limit,
+        apply: values.apply,
+        refreshDecoys: values["refresh-decoys"],
+        isbn13: values.isbn,
+      });
       break;
     default:
       console.log(USAGE);

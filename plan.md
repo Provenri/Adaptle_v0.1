@@ -51,7 +51,7 @@ Repository layout:
 1. `fetch-wikidata`: SPARQL query for book→film pairs (`P144`, `P212` ISBN, `P50` author, `P4947` TMDB id); emits candidate list.
 2. `enrich-openlibrary`: title/author/genre/pages from CC0 API (excluding `description`/covers); assign `cover_theme` from genre mapping (§3).
 3. `enrich-tmdb`: movie title, year, director, poster path, lead cast → `lead_characters`.
-4. `generate-hints`: LLM calls (OpenAI API — user already has a key; a mini-tier model is sufficient and cheap for ~300 short completions) using Prompt A (§7) — only book title+author as input, never TMDB text. Structured Outputs (JSON schema) + Zod validation.
+4. `generate-hints`: LLM calls (OpenAI API — user already has a key; a mini-tier model is sufficient and cheap for ~500 short completions) using Prompt A (§7) — only book title+author as input, never TMDB text. Generates the correct short premise, two tailored false premises, keywords, and both existing hints; Structured Outputs + Zod enforce distinct comparable-length choices.
 5. `generate-threads`: Prompt B (§7) for 50 common-thread pairs across the 3 pair modes, with decoys.
 6. `schedule-and-upload`: assign `scheduled_date` sequence, shuffle decoy character pairs, upsert to Supabase via service role key.
 - Each step writes JSON checkpoints to `/seeding/out/` so steps are re-runnable/resumable; include a small `--limit 10` dev mode for fast iteration.
@@ -74,6 +74,7 @@ Repository layout:
 - Library filter: toggle between all books and only books with screen adaptations; the adaptation toggle composes with shelf status and text search.
 - **Play adaptation:** one-round practice quiz for saved adaptation books from the Library card; uses the same hints/reveal flow but never changes daily score or streak.
 - `+ Add Book`: Open Library text search + `expo-camera` ISBN barcode scan → `booksearch-proxy`; manual books get `tmdb_id = null`.
+- Premise play uses two book-specific `premise_decoys` stored with each playable catalog item. A second-pass LLM editor rejects synonymous or unrelated candidates before upload. Daily and library practice share the same deterministic choice builder; legacy same-genre premises remain only as a fallback for incomplete historical rows.
 - Add-book popularity: Open Library `readinglog_count`, `ratings_count`, `ratings_average`, and `edition_count` produce a logarithmic popularity score. A popular result requires at least 1,000 reading logs, 50 ratings, and 5 editions; the top 25% of qualifying relevant results are returned. Catalog matches are enriched with these factual metrics when the popular filter is enabled. Popularity metadata is response-only and is not saved to the user library.
 - Book-search caching: server-only `book_search_cache` records normalized title, ISBN, adaptation, and popularity responses. TTLs are 6 hours for popular searches, 24 hours for ordinary searches/adaptation resolution, 7 days for ISBN lookups, and 5 minutes for empty results; expired rows are ignored and opportunistically deleted.
 - Empty state onboarding screen (per wireframe).

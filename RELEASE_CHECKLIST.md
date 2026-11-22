@@ -28,7 +28,9 @@ npx --yes deno test --allow-env
 Verify:
 
 - Today's puzzle has exactly five published `catalog_items`.
-- Every published main-round item has `premise_short`, at least two `premise_keywords`, `setting_hint`, and `character_hint`; run the premise-puzzle backfill before release if any are missing.
+- Every published main-round item has `premise_short`, exactly two distinct plausible `premise_decoys`, at least two `premise_keywords`, `setting_hint`, and `character_hint`; run the premise-puzzle backfill before release if any are missing.
+- Sample the daily and library-practice choices across several genres and verify all three premises are similarly specific, close in length/style, and not obvious cross-genre outliers.
+- Confirm the second-pass decoy review has no known synonymous-answer cases in today's five rounds; reject and regenerate any ambiguous pair before release.
 - Today's `common_thread_pairs` row exists and references published books.
 - Anonymous authentication is enabled.
 - `booksearch-proxy` and `tmdb-proxy` are active.

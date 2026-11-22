@@ -21,6 +21,7 @@ export type LibraryBook = {
   characterHint?: string;
   storyPremise?: string;
   premiseShort?: string;
+  premiseDecoys?: string[];
   premiseKeywords?: string[];
 };
 
@@ -38,6 +39,7 @@ export type BookCandidate = Omit<
   leadCharacters?: string[];
   storyPremise?: string;
   premiseShort?: string;
+  premiseDecoys?: string[];
   premiseKeywords?: string[];
   numberOfPages: number | null;
   publicationYear: number | null;

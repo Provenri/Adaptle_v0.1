@@ -35,6 +35,7 @@ export interface BookCandidate {
   characterHint?: string;
   storyPremise?: string;
   premiseShort?: string;
+  premiseDecoys?: string[];
   premiseKeywords?: string[];
 }
 

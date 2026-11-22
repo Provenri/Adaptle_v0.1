@@ -107,7 +107,7 @@ async function lookupKnownAdaptations(candidates: BookCandidate[]): Promise<Book
   addPlayableCatalogFilters(url);
   url.searchParams.set(
     'select',
-    'isbn13,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_keywords',
+    'isbn13,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_decoys,premise_keywords',
   );
   const response = await fetch(
     url,
@@ -132,6 +132,7 @@ async function lookupKnownAdaptations(candidates: BookCandidate[]): Promise<Book
     character_hint: string | null;
     story_premise: string | null;
     premise_short: string | null;
+    premise_decoys: string[] | null;
     premise_keywords: string[] | null;
   }>;
   const byIsbn = new Map(
@@ -150,6 +151,7 @@ async function lookupKnownAdaptations(candidates: BookCandidate[]): Promise<Book
         characterHint: row.character_hint ?? undefined,
         storyPremise: row.story_premise ?? undefined,
         premiseShort: row.premise_short ?? undefined,
+        premiseDecoys: row.premise_decoys ?? undefined,
         premiseKeywords: row.premise_keywords ?? undefined,
       },
     ]),

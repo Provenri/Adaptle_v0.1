@@ -34,6 +34,7 @@ const books: CatalogRow[] = Array.from({ length: 5 }, (_, index) => ({
   character_hint: `Characters ${index + 1}`,
   story_premise: `A compelling premise for book ${index + 1}.`,
   premise_short: `A central conflict drives book ${index + 1}.`,
+  premise_decoys: null,
   premise_keywords: [`conflict ${index + 1}`, 'central struggle'],
 }));
 
@@ -90,12 +91,52 @@ describe('production daily puzzle mapping', () => {
       genre: index < 3 ? 'Science fiction' : 'Drama',
     }));
     const mapped = buildDailyPuzzle('2026-11-20', variedBooks, thread, variedBooks.slice(0, 2));
+    const labels = mapped.puzzle.rounds[0].choices.map((choice) => choice.label);
+    expect(labels).toContain('A central conflict drives book 1.');
+    expect(labels).toHaveLength(3);
+    expect(new Set(labels).size).toBe(3);
+    expect(labels.filter((label) => /^A central conflict drives book /.test(label))).toHaveLength(
+      3
+    );
+  });
+
+  it('uses two stored tailored decoys instead of unrelated catalog premises', () => {
+    const tailored = [
+      'A reluctant hunter tests the limits of human identity.',
+      'A weary detective protects engineered fugitives from capture.',
+    ];
+    const variedBooks = books.map((book, index) =>
+      index === 0 ? { ...book, premise_decoys: tailored } : book
+    );
+    const mapped = buildDailyPuzzle('2026-11-20', variedBooks, thread, variedBooks.slice(0, 2));
+
     expect(mapped.puzzle.rounds[0].choices.map((choice) => choice.label)).toEqual(
-      expect.arrayContaining([
-        'A central conflict drives book 1.',
-        'A central conflict drives book 2.',
-        'A central conflict drives book 3.',
-      ])
+      expect.arrayContaining([books[0].premise_short, ...tailored])
+    );
+    expect(mapped.puzzle.rounds[0].choices).toHaveLength(3);
+  });
+
+  it('falls back to catalog premises when stored decoys are invalid', () => {
+    const mapped = buildDailyPuzzle(
+      '2026-11-20',
+      books.map((book, index) =>
+        index === 0
+          ? {
+              ...book,
+              premise_decoys: [book.premise_short, book.premise_short],
+            }
+          : book
+      ),
+      thread,
+      books.slice(0, 2)
+    );
+
+    const labels = mapped.puzzle.rounds[0].choices.map((choice) => choice.label);
+    expect(labels).toContain('A central conflict drives book 1.');
+    expect(labels).toHaveLength(3);
+    expect(new Set(labels).size).toBe(3);
+    expect(labels.every((label) => /^A central conflict drives book \d+\.$/.test(label))).toBe(
+      true
     );
   });
 
