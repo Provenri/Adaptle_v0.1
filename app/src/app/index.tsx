@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TypographicCover } from '@/components/typographic-cover';
 import { StoryPremise } from '@/components/story-premise';
+import { PremiseQuestion } from '@/components/premise-question';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -22,7 +23,6 @@ import type { BonusItem, DailyRoundDetails, ProductionDailyPuzzle } from '@/lib/
 import {
   createGameState,
   gameReducer,
-  getNameInitials,
   getRoundBreakdown,
   getRoundPotential,
   getTotalPoints,
@@ -126,9 +126,9 @@ function WelcomeScreen({
           </ThemedText>
           {!completedScore ? (
             <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-              Match books to screen adaptations through their actors, unlock clues when needed,
-              then find the shared connection in the bonus round. Save interesting books to your
-              shelf as you play.
+              Identify each book-to-screen story from its one-line premise, unlock clues when
+              needed, then find the shared connection in the bonus round. Save interesting books to
+              your shelf as you play.
             </ThemedText>
           ) : null}
           <PrimaryButton
@@ -295,10 +295,10 @@ function DailyGame({
           </Modal>
 
           {state.phase === 'question' ? (
-            <QuestionView
+            <PremiseQuestion
               details={details}
               hintsUsed={state.hintsUsed}
-              round={round.choices}
+              choices={round.choices}
               onHint={() => dispatch({ type: 'unlock-hint' })}
               onAnswer={(choiceId) => dispatch({ type: 'submit-answer', choiceId })}
             />
@@ -307,6 +307,10 @@ function DailyGame({
           {state.phase === 'reveal' ? (
             <RevealView
               correct={lastResult?.correct ?? false}
+              correctPremise={
+                round.choices.find((choice) => choice.id === round.correctChoiceId)?.label ??
+                details.premiseShort
+              }
               details={details}
               hintsUsed={lastResult?.hintsUsed ?? 0}
               points={lastResult?.points ?? 0}
@@ -400,150 +404,9 @@ function PuzzleStatus({
   );
 }
 
-type QuestionViewProps = {
-  details: DailyRoundDetails;
-  hintsUsed: number;
-  round: DailyPuzzle['rounds'][number]['choices'];
-  onHint: () => void;
-  onAnswer: (choiceId: string) => void;
-};
-
-function QuestionView({ details, hintsUsed, round, onHint, onAnswer }: QuestionViewProps) {
-  return (
-    <View style={styles.stack}>
-      <View style={styles.bookRow}>
-        <View style={styles.coverColumn}>
-          <ThemedText type="smallBold" style={styles.sourceLabel}>
-            Source book
-          </ThemedText>
-          <TypographicCover
-            title={details.title}
-            author={details.author}
-            genre={details.genre}
-            coverTheme={details.coverTheme}
-            width={112}
-          />
-        </View>
-        <View style={styles.prompt}>
-          <ThemedText type="smallBold" style={styles.kicker}>
-            Which actors star in this book&apos;s screen adaptation?
-          </ThemedText>
-          <ThemedText type="subtitle" style={styles.bookTitle}>
-            {details.title}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            by {details.author}
-            {details.publicationYear ? ` · ${details.publicationYear}` : ''}
-          </ThemedText>
-          <View style={styles.adaptationPrompt}>
-            <ThemedText type="smallBold" style={styles.adaptationLabel}>
-              Screen adaptation
-            </ThemedText>
-            <ThemedText type="small" style={styles.adaptationName}>
-              {details.movieTitle}
-            </ThemedText>
-          </View>
-        </View>
-      </View>
-
-      <StoryPremise text={details.storyPremise} />
-
-      <View style={styles.section}>
-        <ThemedText type="smallBold" style={styles.sectionTitle}>
-          Need a clue?
-        </ThemedText>
-        <HintCard
-          number={1}
-          title="Year and setting"
-          unlocked={hintsUsed >= 1}
-          value={`${details.releaseYear} · ${details.settingHint}`}
-          action={hintsUsed === 0 ? onHint : undefined}
-        />
-        <HintCard
-          number={2}
-          title="Character roles"
-          unlocked={hintsUsed >= 2}
-          value={details.characterHint}
-          action={hintsUsed === 1 ? onHint : undefined}
-        />
-        <HintCard
-          number={3}
-          title="Lead actor initials"
-          unlocked={hintsUsed >= 3}
-          value={getNameInitials(details.cast)}
-          action={hintsUsed === 2 ? onHint : undefined}
-          actionLabel="Unlock final clue · 1 pt"
-        />
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="smallBold" style={styles.sectionTitle}>
-          Select the matching actors
-        </ThemedText>
-        {round.map((choice, index) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Answer ${String.fromCharCode(65 + index)}: ${choice.label}`}
-            key={choice.id}
-            onPress={() => onAnswer(choice.id)}
-            style={({ pressed }) => [styles.choice, pressed && styles.pressed]}>
-            <View style={styles.choiceBadge}>
-              <ThemedText type="smallBold" style={styles.lightText}>
-                {String.fromCharCode(65 + index)}
-              </ThemedText>
-            </View>
-            <ThemedText style={styles.choiceText}>{choice.label}</ThemedText>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function HintCard({
-  number,
-  title,
-  unlocked,
-  value,
-  action,
-  actionLabel,
-}: {
-  number: number;
-  title: string;
-  unlocked: boolean;
-  value: string;
-  action?: () => void;
-  actionLabel?: string;
-}) {
-  return (
-    <View style={[styles.hintCard, unlocked && styles.hintUnlocked]}>
-      <View style={styles.hintCopy}>
-        <ThemedText type="smallBold">
-          {unlocked ? '✓' : '○'} Hint {number}: {title}
-        </ThemedText>
-        {unlocked ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            {value}
-          </ThemedText>
-        ) : (
-          <ThemedText type="small" themeColor="textSecondary">
-            Locked
-          </ThemedText>
-        )}
-      </View>
-      {action ? (
-        <Pressable accessibilityRole="button" onPress={action} style={styles.hintButton}>
-          <ThemedText type="smallBold" style={styles.lightText}>
-            {actionLabel ?? 'Unlock · -1 pt'}
-          </ThemedText>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
-
 function RevealView({
   correct,
+  correctPremise,
   details,
   hintsUsed,
   points,
@@ -553,6 +416,7 @@ function RevealView({
   onSave,
 }: {
   correct: boolean;
+  correctPremise: string;
   details: DailyRoundDetails;
   hintsUsed: number;
   points: number;
@@ -593,12 +457,16 @@ function RevealView({
           <ThemedText type="small" themeColor="textSecondary">
             Dir. {details.director}
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Cast: {details.cast}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Characters: {details.characters}
-          </ThemedText>
+          {details.cast ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Cast: {details.cast}
+            </ThemedText>
+          ) : null}
+          {details.characters ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Characters: {details.characters}
+            </ThemedText>
+          ) : null}
           <ThemedText type="small" themeColor="textSecondary">
             Stream:{' '}
             {providerList.length > 0
@@ -609,6 +477,13 @@ function RevealView({
           </ThemedText>
         </View>
       </View>
+      <View style={styles.correctAnswer}>
+        <ThemedText type="smallBold" style={styles.correctAnswerLabel}>
+          Correct premise
+        </ThemedText>
+        <ThemedText type="small">{correctPremise}</ThemedText>
+      </View>
+      <StoryPremise text={details.storyPremise} />
       <ThemedText type="small" themeColor="textSecondary" style={styles.attribution}>
         Movie artwork and provider data supplied by TMDB. This product uses the TMDB API but is not
         endorsed or certified by TMDB.
@@ -848,7 +723,7 @@ function SummaryView({
             {createScoreEmojiGrid(breakdown)}
           </ThemedText>
           <ThemedText type="small" style={styles.shareCardText}>
-            Can you match today’s book-to-movie adaptations?
+            Can you identify today’s book-to-movie story premises?
           </ThemedText>
         </View>
       </ViewShot>
@@ -1033,54 +908,11 @@ const styles = StyleSheet.create({
   stack: {
     gap: Spacing.three,
   },
-  bookRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    alignItems: 'flex-start',
-  },
-  coverColumn: {
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  prompt: {
-    flex: 1,
-    gap: Spacing.one,
-    paddingTop: 26,
-  },
-  adaptationPrompt: {
-    borderLeftColor: '#A84732',
-    borderLeftWidth: 3,
-    marginTop: Spacing.one,
-    paddingLeft: Spacing.two,
-  },
-  sourceLabel: {
-    color: '#173E32',
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  adaptationLabel: {
-    color: '#A84732',
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-  },
-  adaptationName: {
-    color: '#173E32',
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
   kicker: {
     color: '#A84732',
     fontSize: 12,
     lineHeight: 16,
     textTransform: 'uppercase',
-  },
-  bookTitle: {
-    fontSize: 22,
-    lineHeight: 27,
   },
   bookMeta: {
     fontSize: 13,
@@ -1092,28 +924,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-  },
-  hintCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#D8DADD',
-    padding: Spacing.three,
-    gap: Spacing.three,
-  },
-  hintUnlocked: {
-    borderColor: '#117579',
-    backgroundColor: 'rgba(17, 117, 121, 0.08)',
-  },
-  hintCopy: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  hintButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#117579',
-    borderRadius: 999,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
   },
   choice: {
     alignItems: 'center',
@@ -1155,6 +965,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.three,
     padding: Spacing.three,
+  },
+  correctAnswer: {
+    backgroundColor: '#EDF3EC',
+    borderRadius: 14,
+    gap: Spacing.one,
+    padding: Spacing.three,
+  },
+  correctAnswerLabel: {
+    color: '#117579',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   posterFrame: {
     aspectRatio: 2 / 3,

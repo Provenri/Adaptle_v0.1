@@ -7,6 +7,7 @@ import LibraryScreen from '@/app/library';
 import PrivacyPolicyScreen from '@/app/privacy';
 import { bonusBooks, demoPuzzle, demoRoundDetails } from '@/test-fixtures/demo-puzzle';
 import type { ProductionDailyPuzzle } from '@/lib/daily-puzzle';
+import * as dailyPuzzleModule from '@/lib/daily-puzzle';
 import { queryClient } from '@/lib/query-client';
 import { createScoreShareText } from '@/lib/score-sharing';
 import { AppDataProvider } from '@/providers/app-data-provider';
@@ -145,36 +146,46 @@ async function renderScreen(element: ReactElement) {
 
 describe('tab screens', () => {
   it('renders the Play screen', async () => {
-    const { getByText } = await renderScreen(<PlayScreen />);
+    const { getAllByText, getByText, queryByText } = await renderScreen(<PlayScreen />);
     expect(getByText(/ADAPTLE/)).toBeTruthy();
-    expect(getByText("Which actors star in this book's screen adaptation?")).toBeTruthy();
+    expect(getByText("What is the story's one-line premise?")).toBeTruthy();
     expect(getByText('Source book')).toBeTruthy();
+    expect(getByText('Screen')).toBeTruthy();
+    expect(getAllByText('Philip K. Dick')).toHaveLength(1);
+    expect(getByText('1968')).toBeTruthy();
     expect(
-      getByText(
-        'A weary hunter questions what it means to be human while pursuing dangerous replicants.'
-      )
+      getByText('A weary hunter questions humanity while pursuing engineered fugitives.')
     ).toBeTruthy();
+    expect(queryByText(/A weary hunter questions what it means/)).toBeNull();
   });
 
   it('shows the correct characters after a wrong answer', async () => {
     const screen = await renderScreen(<PlayScreen />);
 
-    await fireEvent.press(screen.getByLabelText('Answer B: Timothée Chalamet & Rebecca Ferguson'));
+    await fireEvent.press(
+      screen.getByLabelText("Answer B: A young heir fights for control of a desert world's fate.")
+    );
 
     expect(screen.getByText('× Not quite · +0 pts')).toBeTruthy();
     expect(screen.getByText('Characters: Rick Deckard & Rachael')).toBeTruthy();
-    expect(screen.queryByText(/Matching cast:/)).toBeNull();
+    expect(
+      screen.getByText('A weary hunter questions humanity while pursuing engineered fugitives.')
+    ).toBeTruthy();
   });
 
   it('unlocks hints and progresses the full Play flow', async () => {
     const screen = await renderScreen(<PlayScreen />);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Unlock · -1 pt' }));
-    expect(screen.getByText('1982 · Dystopian 2019 Los Angeles')).toBeTruthy();
-    expect(screen.getByText('Screen adaptation')).toBeTruthy();
+    expect(screen.getByText('Dystopian 2019 Los Angeles')).toBeTruthy();
+    expect(screen.getByText('Screen')).toBeTruthy();
     expect(screen.getByText('Blade Runner')).toBeTruthy();
 
-    await fireEvent.press(screen.getByLabelText('Answer A: Harrison Ford & Sean Young'));
+    await fireEvent.press(
+      screen.getByLabelText(
+        'Answer A: A weary hunter questions humanity while pursuing engineered fugitives.'
+      )
+    );
     expect(screen.getByText('✓ Correct! · +2 pts')).toBeTruthy();
     expect(screen.getByText('Dir. Ridley Scott')).toBeTruthy();
     expect(await screen.findByText('Stream: Prime Video, Apple TV')).toBeTruthy();
@@ -218,6 +229,32 @@ describe('tab screens', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Reading 1' }));
     expect(screen.getByText('Show books you’re reading now.')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Play adaptation/ })).toBeTruthy();
+  });
+
+  it('uses premise selection for library adaptation practice', async () => {
+    const details = { ...demoRoundDetails['blade-runner'], tmdbId: 78 };
+    const practiceSpy = jest.spyOn(dailyPuzzleModule, 'fetchAdaptationPractice').mockResolvedValue({
+      details,
+      choices: [...demoPuzzle.rounds[0].choices],
+      correctChoiceId: demoPuzzle.rounds[0].correctChoiceId,
+    });
+    const screen = await renderScreen(<LibraryScreen />);
+
+    await fireEvent.press(screen.getByRole('button', { name: /Play adaptation/ }));
+    expect(await screen.findByText("What is the story's one-line premise?")).toBeTruthy();
+    expect(screen.getAllByText('Screen').length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(
+        'A weary hunter questions what it means to be human while pursuing dangerous replicants.'
+      )
+    ).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Unlock · -1 pt' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Unlock · -1 pt' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Unlock final clue · 1 pt' }));
+    expect(screen.getByText('humanity · engineered fugitives')).toBeTruthy();
+
+    practiceSpy.mockRestore();
   });
 
   it('adds a book from search results', async () => {
@@ -289,7 +326,7 @@ describe('tab screens', () => {
 describe('score sharing', () => {
   it('formats the viral share text from the actual round breakdown', () => {
     expect(createScoreShareText('2026-11-21', 12, [3, 2, 1, 0, 3, 3], 7, 2)).toBe(
-      'Adaptle — 21 Nov 2026\nI scored 12/18 🎬📖 and saved 2 books to my shelf.\n\n🔥 7-day streak\n🟩 🟨 🟧 ⬛ 🟩 ⭐\n\nCan you match today’s book-to-movie adaptations?'
+      'Adaptle — 21 Nov 2026\nI scored 12/18 🎬📖 and saved 2 books to my shelf.\n\n🔥 7-day streak\n🟩 🟨 🟧 ⬛ 🟩 ⭐\n\nCan you identify today’s book-to-movie story premises?'
     );
   });
 });

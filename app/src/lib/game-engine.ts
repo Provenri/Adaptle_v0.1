@@ -134,20 +134,6 @@ export function maskMovieTitle(title: string): string {
     .join('');
 }
 
-export function getNameInitials(names: string): string {
-  return names
-    .split(/\s*(?:,|&)\s*/u)
-    .map((name) =>
-      name
-        .trim()
-        .split(/\s+/u)
-        .filter(Boolean)
-        .map((part) => `${part[0]?.toUpperCase()}.`)
-        .join(' ')
-    )
-    .join(' & ');
-}
-
 export function shuffleChoices(
   choices: readonly GameChoice[],
   seed: string | number

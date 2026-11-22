@@ -33,6 +33,8 @@ const books: CatalogRow[] = Array.from({ length: 5 }, (_, index) => ({
   setting_hint: `Setting ${index + 1}`,
   character_hint: `Characters ${index + 1}`,
   story_premise: `A compelling premise for book ${index + 1}.`,
+  premise_short: `A central conflict drives book ${index + 1}.`,
+  premise_keywords: [`conflict ${index + 1}`, 'central struggle'],
 }));
 
 const thread: ThreadRow = {
@@ -56,7 +58,7 @@ describe('production daily puzzle mapping', () => {
     expect(first.puzzle.rounds).toHaveLength(5);
     expect(first.puzzle.rounds[0].choices).toEqual(second.puzzle.rounds[0].choices);
     expect(first.puzzle.rounds[0].choices.map((choice) => choice.label)).toContain(
-      'Actor 1 & Actor B1'
+      'A central conflict drives book 1.'
     );
     expect(first.puzzle.bonus.choices.map((choice) => choice.id).sort()).toEqual([
       'connection',
@@ -69,6 +71,32 @@ describe('production daily puzzle mapping', () => {
     expect(() =>
       buildDailyPuzzle('2026-11-20', books.slice(0, 4), thread, books.slice(0, 2))
     ).toThrow(PuzzleUnavailableError);
+  });
+
+  it('rejects daily records without playable premise data', () => {
+    expect(() =>
+      buildDailyPuzzle(
+        '2026-11-20',
+        books.map((book, index) => (index === 0 ? { ...book, premise_short: null } : book)),
+        thread,
+        books.slice(0, 2)
+      )
+    ).toThrow('premise_short');
+  });
+
+  it('prefers same-genre premise decoys', () => {
+    const variedBooks = books.map((book, index) => ({
+      ...book,
+      genre: index < 3 ? 'Science fiction' : 'Drama',
+    }));
+    const mapped = buildDailyPuzzle('2026-11-20', variedBooks, thread, variedBooks.slice(0, 2));
+    expect(mapped.puzzle.rounds[0].choices.map((choice) => choice.label)).toEqual(
+      expect.arrayContaining([
+        'A central conflict drives book 1.',
+        'A central conflict drives book 2.',
+        'A central conflict drives book 3.',
+      ])
+    );
   });
 
   it('maps crossover item kinds consistently', () => {

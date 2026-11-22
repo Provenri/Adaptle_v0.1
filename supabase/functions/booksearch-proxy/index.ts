@@ -238,6 +238,10 @@ function catalogRowToCandidate(row: Record<string, unknown>): BookCandidate {
     settingHint: row.setting_hint ? String(row.setting_hint) : undefined,
     characterHint: row.character_hint ? String(row.character_hint) : undefined,
     storyPremise: row.story_premise ? String(row.story_premise) : undefined,
+    premiseShort: row.premise_short ? String(row.premise_short) : undefined,
+    premiseKeywords: Array.isArray(row.premise_keywords)
+      ? row.premise_keywords.filter((value): value is string => typeof value === 'string')
+      : undefined,
   };
 }
 
@@ -264,7 +268,7 @@ async function randomAdaptation(): Promise<BookCandidate | null> {
 
   const offset = Math.floor(Math.random() * count);
   const response = await fetch(
-    `${supabaseUrl}/rest/v1/catalog_items?select=isbn13,book_title,author,genre,cover_theme,publication_year,number_of_pages,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise&limit=1&offset=${offset}`,
+    `${supabaseUrl}/rest/v1/catalog_items?select=isbn13,book_title,author,genre,cover_theme,publication_year,number_of_pages,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_keywords&limit=1&offset=${offset}`,
     {
       headers: {
         apikey: serviceKey,
@@ -296,5 +300,9 @@ async function randomAdaptation(): Promise<BookCandidate | null> {
     settingHint: row.setting_hint ?? undefined,
     characterHint: row.character_hint ?? undefined,
     storyPremise: row.story_premise ?? undefined,
+    premiseShort: row.premise_short ?? undefined,
+    premiseKeywords: Array.isArray(row.premise_keywords)
+      ? row.premise_keywords.filter((value: unknown): value is string => typeof value === 'string')
+      : undefined,
   };
 }

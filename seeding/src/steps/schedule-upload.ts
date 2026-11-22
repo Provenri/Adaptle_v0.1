@@ -1,12 +1,12 @@
-import { readCheckpoint, writeCheckpoint } from '../lib/checkpoint.js';
-import { requireEnv } from '../lib/env.js';
-import { fetchJson } from '../lib/http.js';
+import { readCheckpoint, writeCheckpoint } from "../lib/checkpoint.js";
+import { requireEnv } from "../lib/env.js";
+import { fetchJson } from "../lib/http.js";
 import {
   CommonThreadSchema,
   HintedBookSchema,
   type CommonThread,
   type HintedBook,
-} from '../types.js';
+} from "../types.js";
 
 /** Rounds per daily puzzle (see Adaptle.md section 4). */
 export const BOOKS_PER_DAY = 5;
@@ -24,7 +24,7 @@ export interface ScheduledBook {
 
 export function alignBooksToThreads(
   books: HintedBook[],
-  threads: CommonThread[]
+  threads: CommonThread[],
 ): HintedBook[] {
   const dayCount = Math.floor(books.length / BOOKS_PER_DAY);
   if (dayCount === 0 || threads.length < dayCount) return books;
@@ -37,7 +37,8 @@ export function alignBooksToThreads(
     const thread = threads.find(
       (candidate) =>
         !usedThreads.has(candidate) &&
-        (remaining.has(candidate.itemAIsbn13) || remaining.has(candidate.itemBIsbn13))
+        (remaining.has(candidate.itemAIsbn13) ||
+          remaining.has(candidate.itemBIsbn13)),
     );
     if (thread) {
       usedThreads.add(thread);
@@ -50,7 +51,10 @@ export function alignBooksToThreads(
       }
     }
 
-    const filler = [...remaining.values()].slice(0, BOOKS_PER_DAY - (ordered.length % BOOKS_PER_DAY));
+    const filler = [...remaining.values()].slice(
+      0,
+      BOOKS_PER_DAY - (ordered.length % BOOKS_PER_DAY),
+    );
     for (const book of filler) {
       ordered.push(book);
       remaining.delete(book.isbn13);
@@ -68,7 +72,7 @@ export function alignBooksToThreads(
  */
 export function scheduleBooks(
   books: HintedBook[],
-  startDate: string
+  startDate: string,
 ): { scheduled: ScheduledBook[]; leftover: HintedBook[] } {
   const completeDays = Math.floor(books.length / BOOKS_PER_DAY);
   const scheduled: ScheduledBook[] = [];
@@ -97,7 +101,7 @@ export function scheduleThreads(
   threads: CommonThread[],
   bookDateByIsbn: Map<string, string>,
   startDate: string,
-  dayCount: number
+  dayCount: number,
 ): { scheduled: ScheduledThread[]; unassigned: CommonThread[] } {
   const withMinDate = threads
     .map((thread) => {
@@ -123,7 +127,7 @@ export function scheduleThreads(
 
   const unassignedSet = new Set(remaining.map((t) => t.thread));
   const unusable = threads.filter(
-    (t) => !withMinDate.some((w) => w.thread === t) || unassignedSet.has(t)
+    (t) => !withMinDate.some((w) => w.thread === t) || unassignedSet.has(t),
   );
   return { scheduled, unassigned: unusable };
 }
@@ -137,7 +141,7 @@ export function toCatalogRow(item: ScheduledBook): Record<string, unknown> {
     author: book.author,
     genre: book.genre,
     cover_theme: book.coverTheme,
-    metadata_source: 'wikidata_openlibrary',
+    metadata_source: "wikidata_openlibrary",
     number_of_pages: book.numberOfPages,
     publication_year: book.bookPublicationYear,
     tmdb_id: book.tmdbId,
@@ -150,6 +154,8 @@ export function toCatalogRow(item: ScheduledBook): Record<string, unknown> {
     setting_hint: book.settingHint,
     character_hint: book.characterHint,
     story_premise: book.storyPremise,
+    premise_short: book.premiseShort,
+    premise_keywords: book.premiseKeywords,
     scheduled_date: scheduledDate,
   };
 }
@@ -175,16 +181,16 @@ async function upsert(
   serviceKey: string,
   table: string,
   onConflict: string,
-  rows: Record<string, unknown>[]
+  rows: Record<string, unknown>[],
 ): Promise<void> {
   const BATCH = 100;
   for (let i = 0; i < rows.length; i += BATCH) {
     await fetchJson(`${baseUrl}/rest/v1/${table}?on_conflict=${onConflict}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         apikey: serviceKey,
         Authorization: `Bearer ${serviceKey}`,
-        Prefer: 'resolution=merge-duplicates,return=minimal',
+        Prefer: "resolution=merge-duplicates,return=minimal",
       },
       body: rows.slice(i, i + BATCH),
       retries: 2,
@@ -194,7 +200,9 @@ async function upsert(
 
 /** Tomorrow in the puzzle timezone (Europe/Berlin), so today's play is undisturbed. */
 export function defaultStartDate(now = new Date()): string {
-  const berlinToday = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' });
+  const berlinToday = now.toLocaleDateString("en-CA", {
+    timeZone: "Europe/Berlin",
+  });
   return addDays(berlinToday, 1);
 }
 
@@ -202,42 +210,59 @@ export async function scheduleAndUpload(options: {
   startDate?: string;
   dryRun?: boolean;
 }): Promise<void> {
-  const supabaseUrl = requireEnv('SUPABASE_URL').replace(/\/$/, '');
-  const serviceKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const supabaseUrl = requireEnv("SUPABASE_URL").replace(/\/$/, "");
+  const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
   const startDate = options.startDate ?? defaultStartDate();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
     throw new Error(`--start-date must be YYYY-MM-DD, got "${startDate}"`);
   }
 
-  const books = readCheckpoint('04-hinted-books', HintedBookSchema);
-  const threads = readCheckpoint('05-common-threads', CommonThreadSchema);
+  const books = readCheckpoint("04-hinted-books", HintedBookSchema);
+  const threads = readCheckpoint("05-common-threads", CommonThreadSchema);
 
   const alignedBooks = alignBooksToThreads(books, threads);
   const { scheduled, leftover } = scheduleBooks(alignedBooks, startDate);
   const dayCount = scheduled.length / BOOKS_PER_DAY;
-  const bookDateByIsbn = new Map(scheduled.map((s) => [s.book.isbn13, s.scheduledDate]));
-  const threadPlan = scheduleThreads(threads, bookDateByIsbn, startDate, dayCount);
+  const bookDateByIsbn = new Map(
+    scheduled.map((s) => [s.book.isbn13, s.scheduledDate]),
+  );
+  const threadPlan = scheduleThreads(
+    threads,
+    bookDateByIsbn,
+    startDate,
+    dayCount,
+  );
 
   console.log(
     `Scheduling ${scheduled.length} books across ${dayCount} days starting ${startDate}` +
-      (leftover.length ? ` (${leftover.length} leftover books not uploaded)` : '')
+      (leftover.length
+        ? ` (${leftover.length} leftover books not uploaded)`
+        : ""),
   );
   console.log(
     `Scheduling ${threadPlan.scheduled.length}/${threads.length} bonus threads` +
-      (threadPlan.unassigned.length ? ` (${threadPlan.unassigned.length} unassigned)` : '')
+      (threadPlan.unassigned.length
+        ? ` (${threadPlan.unassigned.length} unassigned)`
+        : ""),
   );
 
   if (!options.dryRun) {
-    await upsert(supabaseUrl, serviceKey, 'catalog_items', 'isbn13', scheduled.map(toCatalogRow));
-    console.log('catalog_items upserted.');
     await upsert(
       supabaseUrl,
       serviceKey,
-      'common_thread_pairs',
-      'scheduled_date',
-      threadPlan.scheduled.map(toThreadRow)
+      "catalog_items",
+      "isbn13",
+      scheduled.map(toCatalogRow),
     );
-    console.log('common_thread_pairs upserted.');
+    console.log("catalog_items upserted.");
+    await upsert(
+      supabaseUrl,
+      serviceKey,
+      "common_thread_pairs",
+      "scheduled_date",
+      threadPlan.scheduled.map(toThreadRow),
+    );
+    console.log("common_thread_pairs upserted.");
   }
 
   const manifest = {
@@ -249,6 +274,6 @@ export async function scheduleAndUpload(options: {
     applied: !options.dryRun,
     uploadedAt: options.dryRun ? null : new Date().toISOString(),
   };
-  const path = writeCheckpoint('06-upload-manifest', [manifest]);
+  const path = writeCheckpoint("06-upload-manifest", [manifest]);
   console.log(`Upload manifest written: ${path}`);
 }

@@ -28,6 +28,7 @@ npx --yes deno test --allow-env
 Verify:
 
 - Today's puzzle has exactly five published `catalog_items`.
+- Every published main-round item has `premise_short`, at least two `premise_keywords`, `setting_hint`, and `character_hint`; run the premise-puzzle backfill before release if any are missing.
 - Today's `common_thread_pairs` row exists and references published books.
 - Anonymous authentication is enabled.
 - `booksearch-proxy` and `tmdb-proxy` are active.
@@ -80,6 +81,7 @@ npx eas-cli@latest build --profile production --platform ios
 1. Install and smoke-test the production artifact on a physical Android device.
 2. Verify the anonymous sign-in succeeds.
 3. Complete today's six-round flow.
+   Confirm both the daily flow and library “Play adaptation” use premise selection, conceal the premise before answering, and show setting/character/keyword hints.
 4. Test library search, ISBN scanning, status changes, offline sync, and sharing.
 5. Confirm today's score and library data survive a full app restart.
 6. Publish the production artifact only after those checks pass.

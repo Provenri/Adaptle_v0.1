@@ -215,10 +215,7 @@ function LibraryProvider({ children }: { children: ReactNode }) {
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;
 }
 
-export function mergeRemoteLibrary(
-  remote: LibraryBook[],
-  local: LibraryBook[]
-): LibraryBook[] {
+export function mergeRemoteLibrary(remote: LibraryBook[], local: LibraryBook[]): LibraryBook[] {
   const localByIsbn = new Map(local.map((book) => [book.isbn13, book]));
   const remoteByIsbn = new Map(remote.map((book) => [book.isbn13, book]));
   const merged = remote.map((remoteBook) => {
@@ -236,6 +233,8 @@ export function mergeRemoteLibrary(
       settingHint: remoteBook.settingHint ?? localBook.settingHint,
       characterHint: remoteBook.characterHint ?? localBook.characterHint,
       storyPremise: remoteBook.storyPremise ?? localBook.storyPremise,
+      premiseShort: remoteBook.premiseShort ?? localBook.premiseShort,
+      premiseKeywords: remoteBook.premiseKeywords ?? localBook.premiseKeywords,
     };
   });
   for (const localBook of local) {
@@ -291,12 +290,16 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
           typeof payload.moviePosterPath === 'string' ? payload.moviePosterPath : null,
         movieTitle: typeof payload.movieTitle === 'string' ? payload.movieTitle : undefined,
         movieYear: typeof payload.releaseYear === 'number' ? payload.releaseYear : undefined,
-        settingHint:
-          typeof payload.settingHint === 'string' ? payload.settingHint : undefined,
+        settingHint: typeof payload.settingHint === 'string' ? payload.settingHint : undefined,
         characterHint:
           typeof payload.characterHint === 'string' ? payload.characterHint : undefined,
-        storyPremise:
-          typeof payload.storyPremise === 'string' ? payload.storyPremise : undefined,
+        storyPremise: typeof payload.storyPremise === 'string' ? payload.storyPremise : undefined,
+        premiseShort: typeof payload.premiseShort === 'string' ? payload.premiseShort : undefined,
+        premiseKeywords: Array.isArray(payload.premiseKeywords)
+          ? payload.premiseKeywords.filter(
+              (value): value is string => typeof value === 'string' && value.length > 0
+            )
+          : undefined,
         leadActors: Array.isArray(payload.leadActors)
           ? payload.leadActors.filter((value): value is string => typeof value === 'string')
           : undefined,

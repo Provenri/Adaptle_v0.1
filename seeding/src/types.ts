@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /** A verified book-to-movie adaptation pair straight from Wikidata. */
 export const WikidataPairSchema = z.object({
@@ -20,12 +20,12 @@ export const WikidataPairSchema = z.object({
 export type WikidataPair = z.infer<typeof WikidataPairSchema>;
 
 export const COVER_THEMES = [
-  'scifi_teal',
-  'thriller_navy',
-  'fantasy_plum',
-  'literary_terracotta',
-  'romance_rose',
-  'nonfiction_forest',
+  "scifi_teal",
+  "thriller_navy",
+  "fantasy_plum",
+  "literary_terracotta",
+  "romance_rose",
+  "nonfiction_forest",
 ] as const;
 export const CoverThemeSchema = z.enum(COVER_THEMES);
 export type CoverTheme = z.infer<typeof CoverThemeSchema>;
@@ -66,20 +66,22 @@ export const HintedBookSchema = TmdbEnrichedSchema.extend({
   settingHint: z.string().min(1),
   characterHint: z.string().min(1),
   storyPremise: z.string().min(1).max(240),
+  premiseShort: z.string().min(1).max(70),
+  premiseKeywords: z.array(z.string().min(1).max(24)).min(2).max(6),
 });
 export type HintedBook = z.infer<typeof HintedBookSchema>;
 
 export const THREAD_CATEGORIES = [
-  'The Setting',
-  'The Plot',
-  'The Characters',
-  'The Director',
-  'The Author',
+  "The Setting",
+  "The Plot",
+  "The Characters",
+  "The Director",
+  "The Author",
 ] as const;
 export const ThreadCategorySchema = z.enum(THREAD_CATEGORIES);
 export type ThreadCategory = z.infer<typeof ThreadCategorySchema>;
 
-export const PAIR_MODES = ['BOOK_PAIR', 'MOVIE_PAIR', 'CROSSOVER'] as const;
+export const PAIR_MODES = ["BOOK_PAIR", "MOVIE_PAIR", "CROSSOVER"] as const;
 export const PairModeSchema = z.enum(PAIR_MODES);
 export type PairMode = z.infer<typeof PairModeSchema>;
 
@@ -96,12 +98,17 @@ export const CommonThreadSchema = z
     decoy2Category: ThreadCategorySchema,
     decoy2Detail: z.string().min(1),
   })
-  .refine((t) => t.itemAIsbn13 !== t.itemBIsbn13, { message: 'pair items must differ' })
+  .refine((t) => t.itemAIsbn13 !== t.itemBIsbn13, {
+    message: "pair items must differ",
+  })
   .refine(
     (t) =>
       t.decoy1Category !== t.connectionCategory &&
       t.decoy2Category !== t.connectionCategory &&
       t.decoy1Category !== t.decoy2Category,
-    { message: 'decoy categories must be distinct from each other and the answer' }
+    {
+      message:
+        "decoy categories must be distinct from each other and the answer",
+    },
   );
 export type CommonThread = z.infer<typeof CommonThreadSchema>;

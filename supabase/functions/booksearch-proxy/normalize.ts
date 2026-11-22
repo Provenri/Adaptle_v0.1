@@ -28,6 +28,8 @@ export interface BookCandidate {
   settingHint?: string;
   characterHint?: string;
   storyPremise?: string;
+  premiseShort?: string;
+  premiseKeywords?: string[];
 }
 
 export function normalizeIsbn13(raw: string): string | null {

@@ -23,6 +23,8 @@ export type CatalogRow = {
   setting_hint: string | null;
   character_hint: string | null;
   story_premise: string | null;
+  premise_short: string | null;
+  premise_keywords: unknown;
 };
 
 export type ThreadRow = {
@@ -47,6 +49,8 @@ export type DailyRoundDetails = {
   settingHint: string;
   characterHint: string;
   storyPremise: string;
+  premiseShort: string;
+  premiseKeywords: string[];
   movieTitle: string;
   releaseYear: number;
   director: string;
@@ -100,7 +104,7 @@ export async function fetchAdaptationPractice(
   await initializeAnonymousSession();
 
   const select =
-    'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise';
+    'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise,premise_short,premise_keywords';
   let { data: target, error: targetError } = await supabase
     .from('catalog_items')
     .select(select)
@@ -135,44 +139,27 @@ export async function fetchAdaptationPractice(
   if (!target || !target.tmdb_id) {
     throw new PuzzleUnavailableError('This book does not have a playable screen adaptation.');
   }
+  const targetDetails = toRoundDetails(target as CatalogRow);
 
   const { data: decoyRows, error: decoyError } = await supabase
     .from('catalog_items')
     .select(select)
-    .neq('isbn13', isbn13)
+    .neq('isbn13', target.isbn13)
     .not('tmdb_id', 'is', null)
-    .not('lead_actors', 'is', null)
+    .not('premise_short', 'is', null)
+    .not('premise_keywords', 'is', null)
     .limit(30);
   if (decoyError) throw decoyError;
-  const validDecoys = (decoyRows as CatalogRow[]).filter((row) => {
-    try {
-      toRoundDetails(row);
-      return true;
-    } catch {
-      return false;
-    }
-  });
+  const validDecoys = (decoyRows as CatalogRow[]).filter(hasPremiseChoice);
   if (validDecoys.length < 2)
     throw new PuzzleUnavailableError('Practice choices are not ready yet.');
 
-  const selected = shuffleChoices(
-    validDecoys.map((row) => ({
-      id: `${row.isbn13}-cast`,
-      label: readStringArray(row.lead_actors, 'lead_actors', 2).join(' & '),
-    })),
-    `${isbn13}:practice`
-  )
-    .filter((choice) => choice.id !== `${isbn13}-cast`)
-    .slice(0, 2);
-  const correctChoiceId = `${target.isbn13}-cast`;
-  const correct: GameChoice = {
-    id: correctChoiceId,
-    label: readStringArray(target.lead_actors, 'lead_actors', 2).join(' & '),
-  };
+  const correct = toPremiseChoice(target as CatalogRow);
+  const selected = selectPremiseDecoys(target as CatalogRow, validDecoys, `${isbn13}:practice`);
 
   return {
-    details: toRoundDetails(target as CatalogRow),
-    correctChoiceId,
+    details: targetDetails,
+    correctChoiceId: correct.id,
     choices: shuffleChoices([correct, ...selected], `${isbn13}:practice-choices`),
   };
 }
@@ -188,7 +175,7 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const { data: rows, error: booksError } = await supabase
     .from('catalog_items')
     .select(
-      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise'
+      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise,premise_short,premise_keywords'
     )
     .eq('scheduled_date', puzzleDate)
     .order('isbn13', { ascending: true });
@@ -234,7 +221,7 @@ export async function fetchDailyPuzzle(): Promise<ProductionDailyPuzzle> {
   const { data: bonusRows, error: bonusError } = await supabase
     .from('catalog_items')
     .select(
-      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise'
+      'isbn13,book_title,author,genre,cover_theme,publication_year,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_characters,lead_actors,setting_hint,character_hint,story_premise,premise_short,premise_keywords'
     )
     .in('isbn13', bonusIsbns);
   if (bonusError) throw bonusError;
@@ -282,20 +269,19 @@ export function buildDailyPuzzle(
 }
 
 function toGamePuzzle(date: string, books: CatalogRow[], thread: ThreadRow): DailyPuzzle {
-  const castChoices = books.map((book): GameChoice => ({
-    id: `${book.isbn13}-cast`,
-    label: readStringArray(book.lead_actors, 'lead_actors', 2).join(' & '),
-  }));
-
   return {
     id: puzzleSequenceForDate(date),
     rounds: books.map((book, index) => {
-      const correct = castChoices[index]!;
-      const alternatives = [correct, castChoices[(index + 1) % 5]!, castChoices[(index + 3) % 5]!];
+      const correct = toPremiseChoice(book);
+      const decoys = selectPremiseDecoys(
+        book,
+        books.filter((candidate) => candidate.isbn13 !== book.isbn13),
+        `${date}:${book.isbn13}:decoys`
+      );
       return {
         id: book.isbn13,
         correctChoiceId: correct.id,
-        choices: shuffleChoices(alternatives, `${date}:${book.isbn13}`),
+        choices: shuffleChoices([correct, ...decoys], `${date}:${book.isbn13}:${index}`),
       };
     }),
     bonus: {
@@ -330,20 +316,16 @@ function toRoundDetails(book: CatalogRow): DailyRoundDetails {
     publicationYear: book.publication_year,
     genre: book.genre,
     coverTheme: book.cover_theme,
-    settingHint:
-      optionalText(book.setting_hint) ??
-      `${requireNumber(book.release_year, 'release_year')} screen adaptation`,
-    characterHint:
-      optionalText(book.character_hint) ??
-      `Two leads portrayed by ${readStringArray(book.lead_actors, 'lead_actors', 2).join(' and ')}`,
-    storyPremise:
-      optionalText(book.story_premise) ??
-      `${optionalText(book.setting_hint) ?? 'A memorable story'} shaped by ${optionalText(book.character_hint)?.toLowerCase() ?? 'two compelling leads'}.`,
+    settingHint: requireText(book.setting_hint, 'setting_hint'),
+    characterHint: requireText(book.character_hint, 'character_hint'),
+    storyPremise: optionalText(book.story_premise) ?? requirePremise(book.premise_short),
+    premiseShort: requirePremise(book.premise_short),
+    premiseKeywords: readPremiseKeywords(book.premise_keywords),
     movieTitle: requireText(book.movie_title, 'movie_title'),
     releaseYear: requireNumber(book.release_year, 'release_year'),
     director: requireText(book.director, 'director'),
-    cast: readStringArray(book.lead_actors, 'lead_actors', 2).join(', '),
-    characters: readStringArray(book.lead_characters, 'lead_characters', 2).join(' & '),
+    cast: readOptionalStringArray(book.lead_actors).join(', '),
+    characters: readOptionalStringArray(book.lead_characters).join(' & '),
     tmdbId: book.tmdb_id,
     moviePosterPath: book.movie_poster_path,
   };
@@ -379,6 +361,8 @@ function catalogRowFromCandidate(candidate: BookCandidate): CatalogRow {
     setting_hint: candidate.settingHint ?? null,
     character_hint: candidate.characterHint ?? null,
     story_premise: candidate.storyPremise ?? null,
+    premise_short: candidate.premiseShort ?? null,
+    premise_keywords: candidate.premiseKeywords ?? null,
   };
 }
 
@@ -386,30 +370,93 @@ function validateBooks(books: CatalogRow[]): void {
   for (const book of books) {
     requireText(book.book_title, 'book_title');
     requireText(book.author, 'author');
-    readStringArray(book.lead_characters, 'lead_characters', 2);
-    readStringArray(book.lead_actors, 'lead_actors', 2);
     toRoundDetails(book);
   }
 }
 
-function readStringArray(value: unknown, field: string, expectedLength: number): string[] {
-  if (!Array.isArray(value) || value.length < expectedLength) {
-    throw new PuzzleUnavailableError(`Today's puzzle has invalid ${field} data.`);
+function toPremiseChoice(book: CatalogRow): GameChoice {
+  return {
+    id: `${book.isbn13}-premise`,
+    label: requirePremise(book.premise_short),
+  };
+}
+
+function selectPremiseDecoys(
+  target: CatalogRow,
+  candidates: CatalogRow[],
+  seed: string
+): GameChoice[] {
+  const correctLabel = normalizeCatalogLabel(requirePremise(target.premise_short));
+  const eligible = candidates
+    .filter((candidate) => candidate.isbn13 !== target.isbn13)
+    .filter(hasPremiseChoice)
+    .filter(
+      (candidate) =>
+        normalizeCatalogLabel(toPremiseChoice(candidate).label).toLowerCase() !==
+        correctLabel.toLowerCase()
+    );
+  const selected: GameChoice[] = [];
+  const seenLabels = new Set([correctLabel.toLowerCase()]);
+  const ordered = [
+    ...shuffleChoices(
+      eligible.filter((candidate) => candidate.genre === target.genre).map(toPremiseChoice),
+      `${seed}:same-genre`
+    ),
+    ...shuffleChoices(
+      eligible.filter((candidate) => candidate.genre !== target.genre).map(toPremiseChoice),
+      `${seed}:other-genres`
+    ),
+  ];
+  for (const candidate of ordered) {
+    const normalized = normalizeCatalogLabel(candidate.label).toLowerCase();
+    if (seenLabels.has(normalized)) continue;
+    seenLabels.add(normalized);
+    selected.push(candidate);
+    if (selected.length === 2) break;
   }
-  const strings = value.filter(
-    (item): item is string => typeof item === 'string' && item.length > 0
+  if (selected.length < 2) {
+    throw new PuzzleUnavailableError('Premise choices are not ready yet.');
+  }
+  return selected;
+}
+
+function readOptionalStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function hasPremiseChoice(book: CatalogRow): boolean {
+  return (
+    typeof book.premise_short === 'string' &&
+    book.premise_short.trim().length > 0 &&
+    book.premise_short.length <= 70
   );
-  if (strings.length < expectedLength) {
-    throw new PuzzleUnavailableError(`Today's puzzle has invalid ${field} data.`);
+}
+
+function readPremiseKeywords(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length < 2 || value.length > 6) {
+    throw new PuzzleUnavailableError("Today's puzzle has invalid premise_keywords data.");
   }
-  return strings.slice(0, expectedLength);
+  const keywords = value.map((item) => (typeof item === 'string' ? item.trim() : ''));
+  if (keywords.some((keyword) => keyword.length === 0 || keyword.length > 24)) {
+    throw new PuzzleUnavailableError("Today's puzzle has invalid premise_keywords data.");
+  }
+  return keywords;
+}
+
+function requirePremise(value: unknown): string {
+  const premise = requireText(value, 'premise_short');
+  if (premise.length > 70) {
+    throw new PuzzleUnavailableError("Today's puzzle has invalid premise_short data.");
+  }
+  return premise;
 }
 
 function requireText(value: unknown, field: string): string {
-  if (typeof value !== 'string' || value.length === 0) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
     throw new PuzzleUnavailableError(`Today's puzzle is missing ${field}.`);
   }
-  return value;
+  return value.trim();
 }
 
 function optionalText(value: unknown): string | null {

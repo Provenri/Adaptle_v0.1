@@ -20,7 +20,7 @@ export function createScoreShareText(
     `🔥 ${streak}-day streak`,
     scoreEmoji,
     '',
-    'Can you match today’s book-to-movie adaptations?',
+    'Can you identify today’s book-to-movie story premises?',
   ].join('\n');
 }
 

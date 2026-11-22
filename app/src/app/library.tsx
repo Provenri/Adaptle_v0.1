@@ -50,7 +50,6 @@ export default function LibraryScreen() {
     title: string;
     author: string;
     tmdbId?: number;
-    storyPremise?: string;
   } | null>(null);
   const counts = useMemo(
     () => ({
@@ -196,7 +195,6 @@ export default function LibraryScreen() {
                             title: book.title,
                             author: book.author,
                             tmdbId: book.tmdbId,
-                            storyPremise: book.storyPremise,
                           })
                       : undefined
                   }
@@ -236,7 +234,6 @@ export default function LibraryScreen() {
                 title={practiceBook.title}
                 author={practiceBook.author}
                 tmdbId={practiceBook.tmdbId}
-                storyPremise={practiceBook.storyPremise}
                 onClose={() => setPracticeBook(null)}
               />
             </SafeAreaView>
