@@ -21,6 +21,7 @@ import {
   parsePublicationYear,
 } from './normalize.ts';
 import { filterByAdaptation, resolveAdaptations } from './adaptation-resolver.ts';
+import { addPlayableCatalogFilters } from './practice-catalog.ts';
 
 const OL_BASE = 'https://openlibrary.org';
 const GB_BASE = 'https://www.googleapis.com/books/v1';
@@ -185,7 +186,11 @@ async function lookupKnownCatalogAdaptationByIsbn(
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!supabaseUrl || !serviceKey) return null;
   const response = await fetch(
-    `${supabaseUrl}/rest/v1/catalog_items?isbn13=eq.${isbn13}&tmdb_id=not.is.null&select=*`,
+    addPlayableCatalogFilters(
+      new URL(
+        `${supabaseUrl}/rest/v1/catalog_items?isbn13=eq.${isbn13}&select=*`,
+      ),
+    ),
     { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
   );
   if (!response.ok) return null;
@@ -203,7 +208,7 @@ async function lookupKnownCatalogAdaptation(
   const url = new URL(`${supabaseUrl}/rest/v1/catalog_items`);
   url.searchParams.set('book_title', `ilike.*${title.replace(/^the /i, '')}*`);
   url.searchParams.set('author', `ilike.*${author.trim().split(/\s+/).at(-1) ?? ''}*`);
-  url.searchParams.set('tmdb_id', 'not.is.null');
+  addPlayableCatalogFilters(url);
   url.searchParams.set('select', '*');
   url.searchParams.set('limit', '1');
   const response = await fetch(url, {
@@ -250,8 +255,11 @@ async function randomAdaptation(): Promise<BookCandidate | null> {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!supabaseUrl || !serviceKey) return null;
 
+  const countUrl = addPlayableCatalogFilters(
+    new URL(`${supabaseUrl}/rest/v1/catalog_items?select=isbn13`),
+  );
   const countResponse = await fetch(
-    `${supabaseUrl}/rest/v1/catalog_items?select=isbn13`,
+    countUrl,
     {
       headers: {
         apikey: serviceKey,
@@ -267,8 +275,13 @@ async function randomAdaptation(): Promise<BookCandidate | null> {
   if (!Number.isFinite(count) || count < 1) return null;
 
   const offset = Math.floor(Math.random() * count);
+  const itemUrl = addPlayableCatalogFilters(
+    new URL(
+      `${supabaseUrl}/rest/v1/catalog_items?select=isbn13,book_title,author,genre,cover_theme,publication_year,number_of_pages,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_keywords&limit=1&offset=${offset}`,
+    ),
+  );
   const response = await fetch(
-    `${supabaseUrl}/rest/v1/catalog_items?select=isbn13,book_title,author,genre,cover_theme,publication_year,number_of_pages,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_keywords&limit=1&offset=${offset}`,
+    itemUrl,
     {
       headers: {
         apikey: serviceKey,

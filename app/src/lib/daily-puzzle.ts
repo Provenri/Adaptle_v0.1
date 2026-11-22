@@ -139,6 +139,9 @@ export async function fetchAdaptationPractice(
   if (!target || !target.tmdb_id) {
     throw new PuzzleUnavailableError('This book does not have a playable screen adaptation.');
   }
+  if (!hasCompletePracticeData(target as CatalogRow)) {
+    throw new PuzzleUnavailableError('This adaptation is not ready for premise practice yet.');
+  }
   const targetDetails = toRoundDetails(target as CatalogRow);
 
   const { data: decoyRows, error: decoyError } = await supabase
@@ -430,6 +433,23 @@ function hasPremiseChoice(book: CatalogRow): boolean {
     typeof book.premise_short === 'string' &&
     book.premise_short.trim().length > 0 &&
     book.premise_short.length <= 70
+  );
+}
+
+function hasCompletePracticeData(book: CatalogRow): boolean {
+  return (
+    hasPremiseChoice(book) &&
+    typeof book.setting_hint === 'string' &&
+    book.setting_hint.trim().length > 0 &&
+    typeof book.character_hint === 'string' &&
+    book.character_hint.trim().length > 0 &&
+    Array.isArray(book.premise_keywords) &&
+    book.premise_keywords.length >= 2 &&
+    typeof book.movie_title === 'string' &&
+    book.movie_title.trim().length > 0 &&
+    typeof book.release_year === 'number' &&
+    typeof book.director === 'string' &&
+    book.director.trim().length > 0
   );
 }
 

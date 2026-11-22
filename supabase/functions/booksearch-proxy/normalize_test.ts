@@ -5,6 +5,7 @@ import {
   fromOpenLibraryDoc,
   normalizeIsbn13,
 } from '../booksearch-proxy/normalize.ts';
+import { addPlayableCatalogFilters } from '../booksearch-proxy/practice-catalog.ts';
 
 Deno.test('normalizeIsbn13 strips separators and rejects non-ISBN-13', () => {
   assertEquals(normalizeIsbn13('978-0-7352-1129-2'), '9780735211292');
@@ -51,4 +52,25 @@ Deno.test('fromGoogleBooksVolume reads factual fields and falls back to the requ
   assertEquals(candidate?.coverTheme, 'thriller_navy');
   assertEquals(candidate?.source, 'googlebooks_manual');
   assertEquals(candidate?.publicationYear, 2019);
+});
+
+Deno.test('playable catalog filters require complete premise practice metadata', () => {
+  const url = addPlayableCatalogFilters(
+    new URL('https://example.supabase.co/rest/v1/catalog_items'),
+  );
+
+  for (
+    const field of [
+      'tmdb_id',
+      'movie_title',
+      'release_year',
+      'director',
+      'setting_hint',
+      'character_hint',
+      'premise_short',
+      'premise_keywords',
+    ]
+  ) {
+    assertEquals(url.searchParams.get(field), 'not.is.null');
+  }
 });

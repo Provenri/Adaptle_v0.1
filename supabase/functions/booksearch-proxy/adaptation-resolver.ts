@@ -1,4 +1,5 @@
 import type { BookCandidate } from './normalize.ts';
+import { addPlayableCatalogFilters } from './practice-catalog.ts';
 
 const WIKIDATA = 'https://query.wikidata.org/sparql';
 const TMDB = 'https://api.themoviedb.org/3';
@@ -103,7 +104,7 @@ async function lookupKnownAdaptations(candidates: BookCandidate[]): Promise<Book
   const isbnFilter = candidates.map((candidate) => `"${candidate.isbn13}"`).join(',');
   const url = new URL(`${supabaseUrl}/rest/v1/catalog_items`);
   url.searchParams.set('isbn13', `in.(${isbnFilter})`);
-  url.searchParams.set('tmdb_id', 'not.is.null');
+  addPlayableCatalogFilters(url);
   url.searchParams.set(
     'select',
     'isbn13,tmdb_id,movie_title,release_year,director,movie_poster_path,lead_actors,lead_characters,setting_hint,character_hint,story_premise,premise_short,premise_keywords',
