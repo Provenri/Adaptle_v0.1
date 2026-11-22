@@ -148,6 +148,7 @@ describe('tab screens', () => {
   it('renders the Play screen', async () => {
     const { getAllByText, getByText, queryByText } = await renderScreen(<PlayScreen />);
     expect(getByText(/ADAPTLE/)).toBeTruthy();
+    expect(getByText('1 of 5 rounds')).toBeTruthy();
     expect(getByText("What is the story's one-line premise?")).toBeTruthy();
     expect(getByText('Source book')).toBeTruthy();
     expect(getByText('Screen')).toBeTruthy();
@@ -212,6 +213,8 @@ describe('tab screens', () => {
   it('renders the My Library screen', async () => {
     const screen = await renderScreen(<LibraryScreen />);
     expect(screen.getByText('1 book saved · 1 screen adaptation')).toBeTruthy();
+    expect(screen.getByText('Shelf overview')).toBeTruthy();
+    expect(screen.getByText('1 playable')).toBeTruthy();
     expect(screen.getByText('Do Androids Dream of Electric Sheep?')).toBeTruthy();
 
     await fireEvent.changeText(screen.getByLabelText('Search my shelf'), 'missing');
@@ -227,7 +230,6 @@ describe('tab screens', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Reading' }));
     expect(screen.getByText('Reading 1')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Reading 1' }));
-    expect(screen.getByText('Show books you’re reading now.')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Play adaptation/ })).toBeTruthy();
   });
 

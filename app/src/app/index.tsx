@@ -27,6 +27,7 @@ import {
   getRoundPotential,
   getTotalPoints,
   type DailyPuzzle,
+  type GamePhase,
 } from '@/lib/game-engine';
 import {
   createSavedLine,
@@ -186,6 +187,12 @@ function DailyGame({
                 <ThemedText type="smallBold">🔥 {currentStreak}</ThemedText>
               </Pressable>
             </View>
+            <RoundProgress
+              availablePoints={0}
+              phase="complete"
+              roundCount={enginePuzzle.rounds.length}
+              roundIndex={enginePuzzle.rounds.length - 1}
+            />
             <Modal
               animationType="fade"
               onRequestClose={() => setStreakDetailsOpen(false)}
@@ -272,6 +279,12 @@ function DailyGame({
               <ThemedText type="smallBold">🔥 {currentStreak}</ThemedText>
             </Pressable>
           </View>
+          <RoundProgress
+            availablePoints={getRoundPotential(state.hintsUsed)}
+            phase={state.phase}
+            roundCount={enginePuzzle.rounds.length}
+            roundIndex={state.roundIndex}
+          />
           <Modal
             animationType="fade"
             onRequestClose={() => setStreakDetailsOpen(false)}
@@ -374,6 +387,67 @@ function DailyGame({
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+function RoundProgress({
+  availablePoints,
+  phase,
+  roundCount,
+  roundIndex,
+}: {
+  availablePoints: number;
+  phase: GamePhase;
+  roundCount: number;
+  roundIndex: number;
+}) {
+  const currentRoundFinished =
+    phase === 'reveal' || phase === 'bonus' || phase === 'bonus-reveal' || phase === 'complete';
+  const label =
+    phase === 'complete'
+      ? 'Daily complete'
+      : phase === 'bonus' || phase === 'bonus-reveal'
+        ? 'Common Thread bonus'
+        : `${roundIndex + 1} of ${roundCount} rounds`;
+
+  return (
+    <View
+      accessibilityLabel={`Round progress: ${Math.min(roundIndex + 1, roundCount)} of ${roundCount} main rounds`}
+      style={styles.roundProgress}>
+      <View style={styles.roundSteps}>
+        {Array.from({ length: roundCount }, (_, index) => {
+          const completed =
+            phase === 'complete' ||
+            index < roundIndex ||
+            (index === roundIndex && currentRoundFinished);
+          const active = index === roundIndex && phase === 'question';
+          return (
+            <View
+              accessibilityLabel={`Round ${index + 1}${
+                completed ? ', completed' : active ? ', current' : ''
+              }`}
+              key={index}
+              style={[
+                styles.roundStep,
+                completed && styles.roundStepCompleted,
+                active && styles.roundStepActive,
+              ]}>
+              <ThemedText type="smallBold" style={styles.roundStepText}>
+                {completed ? '✓' : index + 1}
+              </ThemedText>
+            </View>
+          );
+        })}
+      </View>
+      <View style={styles.progressSummary}>
+        <ThemedText type="smallBold" style={styles.progressLabel}>
+          {label}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {availablePoints > 0 ? `${availablePoints} pts available` : 'All six rounds finished'}
+        </ThemedText>
+      </View>
+    </View>
   );
 }
 
@@ -856,7 +930,7 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   content: {
-    gap: Spacing.four,
+    gap: Spacing.three,
     padding: Spacing.four,
     paddingBottom: BottomTabInset + Spacing.six,
   },
@@ -871,10 +945,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   headerLogo: {
-    borderRadius: 12,
-    height: 46,
-    width: 46,
-    marginTop: 2,
+    borderRadius: 14,
+    height: 56,
+    width: 56,
   },
   eyebrow: {
     color: '#117579',
@@ -883,6 +956,28 @@ const styles = StyleSheet.create({
   title: {
     marginTop: Spacing.half,
   },
+  roundProgress: {
+    alignItems: 'center',
+    backgroundColor: '#F4EEE6',
+    borderRadius: 16,
+    flexDirection: 'row',
+    gap: Spacing.three,
+    padding: Spacing.three,
+  },
+  roundSteps: { alignItems: 'center', flexDirection: 'row', gap: Spacing.one },
+  roundStep: {
+    alignItems: 'center',
+    backgroundColor: '#E0D8CF',
+    borderRadius: 999,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
+  },
+  roundStepActive: { backgroundColor: '#117579' },
+  roundStepCompleted: { backgroundColor: '#173E32' },
+  roundStepText: { color: '#FFFFFF', fontSize: 12 },
+  progressSummary: { flex: 1, gap: Spacing.half, minWidth: 0 },
+  progressLabel: { color: '#173E32' },
   streak: {
     backgroundColor: '#FFF1D5',
     borderRadius: 999,

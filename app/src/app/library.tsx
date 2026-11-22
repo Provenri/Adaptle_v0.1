@@ -114,38 +114,39 @@ export default function LibraryScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.filters}>
-            <ShelfFilterButton
-              count={books.length}
-              label="All"
-              selected={filter === 'ALL'}
-              onPress={() => setFilter('ALL')}
-            />
-            {(Object.keys(SHELF_LABELS) as ShelfStatus[]).map((status) => (
+          <View style={styles.shelfOverview}>
+            <View style={styles.shelfOverviewHeading}>
+              <ThemedText type="smallBold" style={styles.shelfOverviewLabel}>
+                Shelf overview
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {books.filter((book) => book.movieTitle).length} playable
+              </ThemedText>
+            </View>
+            <View style={styles.filters}>
               <ShelfFilterButton
-                count={counts[status]}
-                key={status}
-                label={
-                  status === 'TO_BE_READ'
-                    ? 'To read'
-                    : status === 'READING'
-                      ? 'Reading'
-                      : 'Finished'
-                }
-                selected={filter === status}
-                onPress={() => setFilter(status)}
+                count={books.length}
+                label="All"
+                selected={filter === 'ALL'}
+                onPress={() => setFilter('ALL')}
               />
-            ))}
+              {(Object.keys(SHELF_LABELS) as ShelfStatus[]).map((status) => (
+                <ShelfFilterButton
+                  count={counts[status]}
+                  key={status}
+                  label={
+                    status === 'TO_BE_READ'
+                      ? 'To read'
+                      : status === 'READING'
+                        ? 'Reading'
+                        : 'Finished'
+                  }
+                  selected={filter === status}
+                  onPress={() => setFilter(status)}
+                />
+              ))}
+            </View>
           </View>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.filterHelp}>
-            {filter === 'ALL'
-              ? 'Show every book in your shelf.'
-              : filter === 'TO_BE_READ'
-                ? 'Show books on your reading queue.'
-                : filter === 'READING'
-                  ? 'Show books you’re reading now.'
-                  : 'Show books you completed.'}
-          </ThemedText>
 
           <TextInput
             accessibilityLabel="Search my shelf"
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center' },
   safeArea: { flex: 1, maxWidth: MaxContentWidth, width: '100%' },
   content: {
-    gap: Spacing.four,
+    gap: Spacing.three,
     padding: Spacing.four,
     paddingBottom: BottomTabInset + Spacing.six,
   },
@@ -706,10 +707,9 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   headerLogo: {
-    borderRadius: 12,
-    height: 46,
-    width: 46,
-    marginTop: 2,
+    borderRadius: 14,
+    height: 56,
+    width: 56,
   },
   eyebrow: { color: '#117579', letterSpacing: 1.4 },
   addButton: {
@@ -728,9 +728,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.one,
   },
-  filterHelp: {
-    marginTop: -Spacing.two,
+  shelfOverview: {
+    backgroundColor: '#F4EEE6',
+    borderRadius: 16,
+    gap: Spacing.two,
+    padding: Spacing.three,
   },
+  shelfOverviewHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  shelfOverviewLabel: { color: '#173E32' },
   adaptationToggle: {
     alignItems: 'center',
     alignSelf: 'flex-start',
