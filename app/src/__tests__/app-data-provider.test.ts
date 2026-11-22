@@ -3,9 +3,11 @@ import {
   updateBookStatus,
   upsertBookAtFront,
 } from '@/providers/app-data-provider';
-import { findExistingLibraryMatch } from '@/data/library-data';
-import { hasPlayableAdaptation } from '@/data/library-data';
-import type { LibraryBook } from '@/data/library-data';
+import {
+  findExistingLibraryMatch,
+  hasPlayableAdaptation,
+  type LibraryBook,
+} from '@/data/library-data';
 
 jest.mock('react-native-mmkv', () => {
   const values = new Map<string, string>();
