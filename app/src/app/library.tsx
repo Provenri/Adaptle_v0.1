@@ -669,6 +669,7 @@ function AddBookModal({
                       <ThemedText type="smallBold">{candidate.title}</ThemedText>
                       <ThemedText type="small" themeColor="textSecondary">
                         {candidate.author}
+                        {candidate.publicationYear ? ` · ${candidate.publicationYear}` : ''}
                       </ThemedText>
                       {candidate.hasAdaptation ? (
                         <ThemedText

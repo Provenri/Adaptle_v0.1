@@ -275,6 +275,7 @@ describe('tab screens', () => {
     await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
     await fireEvent.changeText(screen.getByLabelText('Search book catalog'), 'Project Hail Mary');
     await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
+    expect(await screen.findByText('Andy Weir · 2021')).toBeTruthy();
     await fireEvent.press(await screen.findByText('Project Hail Mary'));
 
     expect(screen.queryByLabelText('Search book catalog')).toBeNull();
