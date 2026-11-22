@@ -76,6 +76,21 @@ Optional iOS build requires Apple credentials and an active Apple Developer acco
 npx eas-cli@latest build --profile production --platform ios
 ```
 
+For an iOS Simulator-only build, which does not require device provisioning:
+
+```bash
+cd app
+npx eas-cli@latest build --profile ios-simulator --platform ios
+```
+
+After the simulator build finishes, open its EAS build page, download the `.tar.gz`
+artifact, extract it, and install the generated `.app` bundle into a booted
+Simulator with:
+
+```bash
+xcrun simctl install booted /path/to/Adaptle.app
+```
+
 ## Launch
 
 1. Install and smoke-test the production artifact on a physical Android device.
