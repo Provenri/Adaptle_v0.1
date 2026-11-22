@@ -124,9 +124,7 @@ export function PremiseQuestion({
                 {String.fromCharCode(65 + index)}
               </ThemedText>
             </View>
-            <ThemedText style={styles.choiceText}>
-              {choice.label}
-            </ThemedText>
+            <ThemedText style={styles.choiceText}>{choice.label}</ThemedText>
           </Pressable>
         ))}
       </View>
