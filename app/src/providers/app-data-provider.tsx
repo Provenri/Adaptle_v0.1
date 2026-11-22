@@ -246,6 +246,7 @@ export function upsertBookAtFront(
     ...candidate,
     tmdbId: candidate.tmdbId ?? existing?.tmdbId ?? undefined,
     publicationYear: candidate.publicationYear ?? existing?.publicationYear,
+    movieYear: candidate.releaseYear ?? existing?.movieYear,
     savedAt: Date.now(),
     status,
   };

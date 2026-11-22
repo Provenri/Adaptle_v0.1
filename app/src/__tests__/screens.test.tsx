@@ -217,6 +217,7 @@ describe('tab screens', () => {
     expect(screen.getByText('Shelf overview')).toBeTruthy();
     expect(screen.getByText('1 playable')).toBeTruthy();
     expect(screen.getByText('Do Androids Dream of Electric Sheep?')).toBeTruthy();
+    expect(screen.getByText('🎬 Blade Runner (1982)')).toBeTruthy();
 
     await fireEvent.changeText(screen.getByLabelText('Search my shelf'), 'missing');
     expect(screen.getByText('No matching books')).toBeTruthy();

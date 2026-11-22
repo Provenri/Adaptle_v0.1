@@ -340,7 +340,8 @@ function LibraryBookCard({
           {book.movieTitle ? (
             <>
               <ThemedText type="small" style={styles.adaptation}>
-                🎬 {book.movieTitle} ({book.movieYear})
+                🎬 {book.movieTitle}
+                {book.movieYear ? ` (${book.movieYear})` : ''}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 📺{' '}

@@ -96,4 +96,27 @@ describe('library refresh merging', () => {
       })
     ).toBe(savedDune);
   });
+
+  it('maps an adaptation release year when adding a book', () => {
+    const result = upsertBookAtFront(
+      [localBook],
+      {
+        isbn13: '9780000000002',
+        title: 'Adapted book',
+        author: 'Screen Author',
+        publicationYear: 2001,
+        genre: 'Fiction',
+        coverTheme: 'literary_terracotta',
+        releaseYear: 2010,
+        movieTitle: 'Adapted film',
+        tmdbId: 123,
+      },
+      'TO_BE_READ'
+    );
+
+    expect(result[0]).toMatchObject({
+      movieTitle: 'Adapted film',
+      movieYear: 2010,
+    });
+  });
 });
