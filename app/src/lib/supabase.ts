@@ -134,7 +134,10 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
         user_id: user.id,
         isbn13,
         status,
-        saved_at: new Date().toISOString(),
+        saved_at:
+          mutation.createdAt > 0
+            ? new Date(mutation.createdAt).toISOString()
+            : new Date().toISOString(),
       },
       { onConflict: 'user_id,isbn13' }
     );
@@ -143,6 +146,26 @@ export async function syncOfflineMutation(mutation: OfflineMutation): Promise<vo
         throw new PermanentMutationError(`Invalid shelf mutation: ${shelfError.message}`);
       }
       throw shelfError;
+    }
+    return;
+  }
+
+  if (mutation.type === 'library-status-update') {
+    const isbn13 = requiredString(mutation.payload.isbn13, 'isbn13');
+    const status = requiredString(mutation.payload.status, 'status');
+    if (!['TO_BE_READ', 'READING', 'FINISHED'].includes(status)) {
+      throw new PermanentMutationError(`Unsupported library status "${status}"`);
+    }
+    const { error } = await supabase
+      .from('user_library')
+      .update({ status })
+      .eq('user_id', user.id)
+      .eq('isbn13', isbn13);
+    if (error) {
+      if (isPermanentDatabaseError(error)) {
+        throw new PermanentMutationError(`Invalid shelf status mutation: ${error.message}`);
+      }
+      throw error;
     }
     return;
   }

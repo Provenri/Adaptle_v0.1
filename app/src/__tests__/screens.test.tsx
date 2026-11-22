@@ -189,11 +189,17 @@ describe('tab screens', () => {
       )
     );
     expect(screen.getByText('✓ Correct! · +2 pts')).toBeTruthy();
+    expect(
+      screen.getByText('Already in your library. Choose another status to update it.')
+    ).toBeTruthy();
     expect(screen.getByText('Dir. Ridley Scott')).toBeTruthy();
     expect(await screen.findByText('Stream: Prime Video, Apple TV')).toBeTruthy();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Finished' }));
-    expect(screen.getByRole('button', { name: '✓ Finished' }).props.accessibilityState).toEqual({
+    expect(
+      screen.getByRole('button', { name: '✓ Finished' }).props.accessibilityState
+    ).toMatchObject({
+      disabled: true,
       selected: true,
     });
 
@@ -209,6 +215,7 @@ describe('tab screens', () => {
     );
     await fireEvent.press(screen.getByRole('button', { name: 'See daily score' }));
     expect(screen.getByText('17 / 18 PTS')).toBeTruthy();
+    expect(screen.queryByText(/books? saved to your shelf today/)).toBeNull();
   });
 
   it('renders the My Library screen', async () => {

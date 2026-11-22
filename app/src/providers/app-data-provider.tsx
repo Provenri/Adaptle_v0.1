@@ -140,14 +140,12 @@ function LibraryProvider({ children }: { children: ReactNode }) {
         setSyncVersion((version) => version + 1);
       },
       updateStatus: (isbn13, status) => {
-        setBooks((current) =>
-          current.map((book) => (book.isbn13 === isbn13 ? { ...book, status } : book))
-        );
+        setBooks((current) => updateBookStatus(current, isbn13, status));
         const book = books.find((item) => item.isbn13 === isbn13);
         if (book) {
           enqueueOfflineMutation({
-            type: 'library-upsert',
-            payload: { ...book, status },
+            type: 'library-status-update',
+            payload: { isbn13, status },
           });
           setSyncVersion((version) => version + 1);
         }
@@ -253,6 +251,14 @@ export function upsertBookAtFront(
   return [savedBook, ...books.filter((book) => book.isbn13 !== candidate.isbn13)];
 }
 
+export function updateBookStatus(
+  books: LibraryBook[],
+  isbn13: string,
+  status: ShelfStatus
+): LibraryBook[] {
+  return books.map((book) => (book.isbn13 === isbn13 ? { ...book, status } : book));
+}
+
 function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
   const result = [...remote];
   for (const mutation of getOfflineMutations()) {
@@ -260,6 +266,14 @@ function overlayPendingLibraryMutations(remote: LibraryBook[]): LibraryBook[] {
     const payload = mutation.payload;
     const isbn13 = typeof payload.isbn13 === 'string' ? payload.isbn13 : null;
     const status = payload.status;
+    if (mutation.type === 'library-status-update') {
+      if (!isbn13 || (status !== 'TO_BE_READ' && status !== 'READING' && status !== 'FINISHED')) {
+        continue;
+      }
+      const index = result.findIndex((book) => book.isbn13 === isbn13);
+      if (index >= 0) result[index] = { ...result[index], status };
+      continue;
+    }
     if (mutation.type === 'library-delete') {
       if (isbn13) {
         const index = result.findIndex((book) => book.isbn13 === isbn13);

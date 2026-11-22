@@ -1,4 +1,8 @@
-import { mergeRemoteLibrary, upsertBookAtFront } from '@/providers/app-data-provider';
+import {
+  mergeRemoteLibrary,
+  updateBookStatus,
+  upsertBookAtFront,
+} from '@/providers/app-data-provider';
 import { findExistingLibraryMatch } from '@/data/library-data';
 import type { LibraryBook } from '@/data/library-data';
 
@@ -118,5 +122,19 @@ describe('library refresh merging', () => {
       movieTitle: 'Adapted film',
       movieYear: 2010,
     });
+  });
+
+  it('updates status without changing shelf order or save timestamp', () => {
+    const second: LibraryBook = {
+      ...localBook,
+      isbn13: '9780000000002',
+      title: 'Second book',
+      savedAt: 100,
+    };
+    const first = { ...localBook, savedAt: 200 };
+    const result = updateBookStatus([first, second], second.isbn13, 'FINISHED');
+
+    expect(result.map((book) => book.isbn13)).toEqual([first.isbn13, second.isbn13]);
+    expect(result[1]).toMatchObject({ status: 'FINISHED', savedAt: 100 });
   });
 });

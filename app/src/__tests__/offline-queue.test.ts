@@ -69,6 +69,7 @@ describe('offline mutation queue', () => {
       type: 'library-upsert',
       payload: { isbn13: '9780000000001', status: 'TO_BE_READ' },
     });
+
     enqueueOfflineMutation({
       id: 'library-new',
       type: 'library-upsert',
@@ -88,6 +89,30 @@ describe('offline mutation queue', () => {
     expect(getOfflineMutations().map((mutation) => mutation.id)).toEqual([
       'library-new',
       'score-new',
+    ]);
+  });
+
+  it('merges a status-only update into an unsynced book save', () => {
+    enqueueOfflineMutation({
+      id: 'saved',
+      type: 'library-upsert',
+      payload: { isbn13: '9780000000001', status: 'TO_BE_READ' },
+    });
+    enqueueOfflineMutation({
+      id: 'status',
+      type: 'library-status-update',
+      payload: { isbn13: '9780000000001', status: 'FINISHED' },
+    });
+
+    expect(getOfflineMutations()).toEqual([
+      expect.objectContaining({
+        id: 'saved',
+        type: 'library-upsert',
+        payload: {
+          isbn13: '9780000000001',
+          status: 'FINISHED',
+        },
+      }),
     ]);
   });
 

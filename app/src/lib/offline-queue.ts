@@ -4,6 +4,12 @@ const QUEUE_KEY = 'offline-mutations';
 
 export type OfflineMutation =
   | { id: string; type: 'library-upsert'; payload: Record<string, unknown>; createdAt: number }
+  | {
+      id: string;
+      type: 'library-status-update';
+      payload: Record<string, unknown>;
+      createdAt: number;
+    }
   | { id: string; type: 'library-delete'; payload: Record<string, unknown>; createdAt: number }
   | {
       id: string;
@@ -48,12 +54,19 @@ export function enqueueOfflineMutation(
     createdAt?: number;
   }
 ): OfflineMutation {
-  const queued = {
+  let queued = {
     ...mutation,
     id: mutation.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     createdAt: mutation.createdAt ?? Date.now(),
   } as OfflineMutation;
   const existing = getOfflineMutations();
+  const previous = existing.find((entry) => mutationKey(entry) === mutationKey(queued));
+  if (queued.type === 'library-status-update' && previous?.type === 'library-upsert') {
+    queued = {
+      ...previous,
+      payload: { ...previous.payload, ...queued.payload },
+    };
+  }
   const queue = existing.filter((mutation) => mutationKey(mutation) !== mutationKey(queued));
   localStorage.set(QUEUE_KEY, [...queue, queued]);
   return queued;
@@ -91,7 +104,11 @@ function isValidMutation(mutation: OfflineMutation): boolean {
   if (!mutation || typeof mutation.id !== 'string' || typeof mutation.createdAt !== 'number') {
     return false;
   }
-  if (!['library-upsert', 'library-delete', 'daily-score-upsert'].includes(mutation.type)) {
+  if (
+    !['library-upsert', 'library-status-update', 'library-delete', 'daily-score-upsert'].includes(
+      mutation.type
+    )
+  ) {
     return false;
   }
   return (

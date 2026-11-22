@@ -153,7 +153,8 @@ function DailyGame({
   const [state, dispatch] = useReducer(gameReducer, enginePuzzle, createGameState);
   const [savedThisSession, setSavedThisSession] = useState<Record<string, true>>({});
   const [streakDetailsOpen, setStreakDetailsOpen] = useState(false);
-  const { books, currentStreak, saveScore, saveBook, scores, resetTodayScore } = useLibrary();
+  const { books, currentStreak, saveScore, saveBook, updateStatus, scores, resetTodayScore } =
+    useLibrary();
   const round = enginePuzzle.rounds[state.roundIndex];
   const details = dailyPuzzle.roundDetails[round.id];
   const lastResult = state.results.at(-1);
@@ -332,6 +333,11 @@ function DailyGame({
               }
               savedStatus={books.find((book) => book.isbn13 === details.isbn13)?.status}
               onSave={(status) => {
+                const savedBook = books.find((book) => book.isbn13 === details.isbn13);
+                if (savedBook) {
+                  if (savedBook.status !== status) updateStatus(details.isbn13, status);
+                  return;
+                }
                 saveBook(details, status);
                 setSavedThisSession((current) => ({ ...current, [details.isbn13]: true }));
               }}
@@ -564,6 +570,11 @@ function RevealView({
         <ThemedText type="smallBold" style={styles.sectionTitle}>
           Save this book to your library
         </ThemedText>
+        {savedStatus ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            Already in your library. Choose another status to update it.
+          </ThemedText>
+        ) : null}
         <View style={styles.shelfActions}>
           <ShelfButton
             label="To be read"
@@ -625,8 +636,8 @@ function ShelfButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={() => onSave(status)}
+      accessibilityState={{ disabled: selected, selected }}
+      onPress={selected ? undefined : () => onSave(status)}
       style={({ pressed }) => [
         styles.shelfButton,
         selected && styles.shelfButtonSelected,
