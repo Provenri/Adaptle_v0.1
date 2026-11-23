@@ -11,6 +11,7 @@ import { Spacing } from '@/constants/theme';
 import { fetchAdaptationPractice } from '@/lib/daily-puzzle';
 import { resolvePracticeAdaptation } from '@/lib/supabase';
 import { getRoundPotential } from '@/lib/game-engine';
+import { sharePracticeChallenge } from '@/lib/practice-sharing';
 
 export function AdaptationPractice({
   isbn13,
@@ -45,6 +46,7 @@ export function AdaptationPractice({
   });
   const [hintsUsed, setHintsUsed] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   if (query.isPending) {
     return <PracticeStatus text="Preparing adaptation practice…" onClose={onClose} />;
@@ -100,6 +102,27 @@ export function AdaptationPractice({
           </ThemedText>
         </View>
         <StoryPremise text={details.storyPremise} />
+        <PracticeButton
+          label="Share practice"
+          onPress={() => {
+            setShareError(null);
+            void sharePracticeChallenge({
+              isbn13: details.isbn13,
+              title: details.title,
+              author: details.author,
+              movieTitle: details.movieTitle,
+              tmdbId: details.tmdbId ?? undefined,
+            }).catch((error) =>
+              setShareError(error instanceof Error ? error.message : 'Unable to share practice.')
+            );
+          }}
+          secondary
+        />
+        {shareError ? (
+          <ThemedText accessibilityRole="alert" type="small" style={styles.wrong}>
+            {shareError}
+          </ThemedText>
+        ) : null}
         <PracticeButton label="Close practice" onPress={onClose} />
       </ScrollView>
     );

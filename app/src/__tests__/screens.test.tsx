@@ -281,6 +281,7 @@ describe('tab screens', () => {
       )
     );
     expect(screen.getByText('Correct premise')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Share practice' })).toBeTruthy();
     expect(
       screen.getByText('A weary hunter questions humanity while pursuing engineered fugitives.')
     ).toBeTruthy();

@@ -11,7 +11,7 @@ SplashScreen.preventAutoHideAsync();
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const pathname = usePathname();
-  const isStandaloneRoute = ['/privacy', '/contact', '/impressum'].includes(pathname);
+  const isStandaloneRoute = ['/privacy', '/contact', '/impressum', '/practice'].includes(pathname);
 
   return (
     <AppDataProvider>

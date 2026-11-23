@@ -34,6 +34,7 @@ Verify:
 - Today's `common_thread_pairs` row exists and references published books.
 - Anonymous authentication is enabled.
 - `booksearch-proxy` and `tmdb-proxy` are active.
+- Verify a playable library practice exposes “Share practice” and its universal `/practice?isbn=...` URL works on a clean browser without exposing premises or hints in share metadata.
 - RLS still limits personal tables to the authenticated user.
 - The development-only replay control is absent from production behavior.
 - No service-role, OpenAI, or TMDB key is in the client bundle.

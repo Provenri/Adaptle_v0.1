@@ -4,6 +4,12 @@
 
 **Adaptle** is a mobile-first, Wordle-style daily book-to-movie trivia game paired with an organic personal reading tracker (**`To be read`**, **`Reading`**, and **`Finished`**). Instead of confronting new players with an empty shelf or copyrighted book summaries, users immediately play a **5-round daily story-premise challenge** plus a **Round 6 Common Thread Bonus**—building their reading list and streaming watchlist one tap at a time from every reveal card.
 
+Completed library adaptation practices can also be shared as a universal
+`https://adaptle.expo.app/practice?...` challenge. The recipient can play the
+same spoiler-safe premise round directly on web without logging in or
+installing Adaptle; installed native builds can hand the challenge into the app
+through the `adaptle://` deep link.
+
 ### Key Differentiators
 
 - **Game-First Organic Library:** Solves the cold-start problem by letting users discover books through daily gameplay and save them directly from reveal cards.
