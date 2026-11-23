@@ -130,7 +130,7 @@ function WelcomeScreen({
           </ThemedText>
           {!completedScore ? (
             <View style={styles.welcomePlayMark}>
-              <TabPlayIcon color="#117579" />
+              <TabPlayIcon color="#173E32" large />
             </View>
           ) : null}
           <PrimaryButton
