@@ -138,7 +138,7 @@ export default function LibraryScreen() {
               accessibilityRole="button"
               onPress={() => setAddBookOpen(true)}
               style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
-              <ThemedText type="smallBold" style={styles.lightText}>
+              <ThemedText type="smallBold" style={styles.addButtonText}>
                 + Add Book
               </ThemedText>
             </Pressable>
@@ -777,12 +777,15 @@ const styles = StyleSheet.create({
   eyebrow: { color: '#117579', letterSpacing: 1.4 },
   title: { marginTop: Spacing.half },
   addButton: {
-    backgroundColor: '#173E32',
+    backgroundColor: '#F4EEE6',
+    borderColor: '#CCD2CF',
     borderRadius: 999,
+    borderWidth: 1,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two,
     flexShrink: 0,
   },
+  addButtonText: { color: '#173E32' },
   filters: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
