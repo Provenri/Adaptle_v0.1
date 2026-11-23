@@ -46,10 +46,7 @@ export function TabButton({ children, icon: Icon, isFocused, ...props }: TabButt
       style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
       <View style={styles.tabButtonContent}>
         <Icon color={color} />
-        <ThemedText type="smallBold" style={[styles.tabLabel, { color }]}>
-          {children}
-        </ThemedText>
-        <View style={[styles.activeIndicator, !isFocused && styles.inactiveIndicator]} />
+        <ThemedText style={[styles.tabLabel, { color }]}>{children}</ThemedText>
       </View>
     </Pressable>
   );
@@ -93,17 +90,11 @@ const styles = StyleSheet.create({
   tabButton: { flex: 1, maxWidth: 180 },
   tabButtonContent: {
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.two,
     justifyContent: 'center',
     minHeight: 52,
   },
-  tabLabel: { fontSize: 11, lineHeight: 14 },
-  activeIndicator: {
-    backgroundColor: '#117579',
-    borderRadius: 999,
-    height: 3,
-    marginTop: 3,
-    width: 18,
-  },
-  inactiveIndicator: { opacity: 0 },
+  tabLabel: { fontSize: 14, fontWeight: '600', lineHeight: 18 },
   pressed: { opacity: 0.65 },
 });

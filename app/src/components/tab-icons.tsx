@@ -2,32 +2,34 @@ import Svg, { Circle, Path, Rect, G } from 'react-native-svg';
 
 export function TabPlayIcon({ color }: { color: string }) {
   return (
-    <Svg accessibilityElementsHidden height={26} width={30} viewBox="0 0 32 28">
+    <Svg accessibilityElementsHidden height={27} width={36} viewBox="0 0 38 28">
       <Path
-        d="M2.5 6.5c4.4-1.7 7.5-.8 10.5 1.8v15c-3-2.5-6.1-3.4-10.5-1.7z"
+        d="M2.5 4.5c5-1 8.8-.2 12 2.4v17c-3.2-2.6-7-3.4-12-2.4z"
         fill="none"
         stroke={color}
         strokeLinejoin="round"
-        strokeWidth="1.8"
+        strokeWidth="2"
       />
       <Path
-        d="M13 8.3c2.3-1.9 4.9-2.7 7.7-2.4M13 23.3c1.6-1.3 3.3-2.1 5-2.5"
+        d="M14.5 6.9c3.2-2.5 7-3.4 12-2.4v7"
         fill="none"
         stroke={color}
         strokeLinecap="round"
-        strokeWidth="1.8"
+        strokeLinejoin="round"
+        strokeWidth="2"
       />
       <Rect
         fill="none"
-        height="14"
+        height="15"
         rx="2.5"
         stroke={color}
-        strokeWidth="1.8"
-        width="12"
-        x="18"
-        y="2.5"
+        strokeWidth="2"
+        width="16"
+        x="20"
+        y="8.5"
       />
-      <Path d="m22.5 6.5 4.5 3-4.5 3z" fill={color} />
+      <Path d="m25.5 12.5 6 3.5-6 3.5z" fill={color} />
+      <Path d="m23 5 2.5 3.5M27.5 5 30 8.5M32 5l2 3.5" stroke={color} strokeWidth="2" />
     </Svg>
   );
 }
