@@ -801,13 +801,12 @@ const styles = StyleSheet.create({
   eyebrow: { color: '#117579', letterSpacing: 1.4 },
   title: { marginTop: Spacing.half },
   addButton: {
-    backgroundColor: '#F4EEE6',
-    borderColor: '#CCD2CF',
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
+    alignItems: 'center',
+    borderRadius: 22,
     flexShrink: 0,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
   },
   filters: {
     alignItems: 'center',
