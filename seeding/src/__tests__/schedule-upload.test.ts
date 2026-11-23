@@ -191,6 +191,45 @@ describe("row mappers", () => {
         false,
       );
     });
+
+    describe("hybrid future scheduling", () => {
+      it("creates complete 3 recent / 2 older days", async () => {
+        const { createHybridPlan } =
+          await import("../steps/hybrid-schedule.js");
+        const recent = Array.from({ length: 9 }, (_, index) => ({
+          isbn13: isbn(3000 + index),
+          book_title: `Recent ${index}`,
+          author: `Author ${index}`,
+          genre: `Genre ${index}`,
+          publication_year: 2000,
+          release_year: 2000 + index,
+          scheduled_date: null,
+        }));
+        const older = Array.from({ length: 6 }, (_, index) => ({
+          isbn13: isbn(4000 + index),
+          book_title: `Classic ${index}`,
+          author: `Classic ${index}`,
+          genre: `Classic genre ${index}`,
+          publication_year: 1970 + index,
+          release_year: 1970 + index,
+          scheduled_date: null,
+        }));
+        const plan = createHybridPlan(
+          [...recent, ...older],
+          [],
+          "2026-11-23",
+          "test",
+          3,
+        );
+
+        expect(plan.days).toHaveLength(3);
+        for (const day of plan.days) {
+          expect(day.books).toHaveLength(5);
+          expect(day.recent).toBe(3);
+          expect(day.older).toBe(2);
+        }
+      });
+    });
   });
 
   it("maps thread rows", () => {

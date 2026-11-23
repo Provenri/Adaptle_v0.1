@@ -32,6 +32,7 @@ Verify:
 - Sample the daily and library-practice choices across several genres and verify all three premises are similarly specific, close in length/style, and not obvious cross-genre outliers.
 - Confirm the second-pass decoy review has no known synonymous-answer cases in today's five rounds; reject and regenerate any ambiguous pair before release.
 - Today's `common_thread_pairs` row exists and references published books.
+- Every future scheduled day has exactly five playable books, a 3 recent / 2 older mix, and exactly one eligible Common Thread; use `hybrid-schedule` and `generate-schedule-threads` before any schedule apply.
 - Anonymous authentication is enabled.
 - `booksearch-proxy` and `tmdb-proxy` are active.
 - Verify a playable library practice exposes “Share practice” and its universal `/practice?isbn=...` URL works on a clean browser without exposing premises or hints in share metadata.

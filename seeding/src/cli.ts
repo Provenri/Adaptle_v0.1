@@ -12,6 +12,8 @@ import { reshuffleSchedule } from "./steps/reshuffle-schedule.js";
 import { rebalanceThreads } from "./steps/rebalance-threads.js";
 import { backfillPremisePuzzles } from "./steps/backfill-story-premises.js";
 import { expandCatalog } from "./steps/catalog-expansion.js";
+import { buildHybridSchedule } from "./steps/hybrid-schedule.js";
+import { generateScheduleThreads } from "./steps/generate-schedule-threads.js";
 
 const USAGE = `Adaptle seeding pipeline
 
@@ -32,6 +34,8 @@ Steps:
   rebalance-threads     Move bonuses to prioritize prior book exposure
   backfill-premise-puzzles Generate tailored premise answers, two decoys + keyword hints; dry-run by default
   catalog-expansion     Expand fully playable adaptations toward a target; dry-run by default
+  hybrid-schedule       Rebuild future days with 3 recent + 2 older; dry-run by default
+  generate-schedule-threads Fill missing Common Threads in the future schedule manifest
 
 Options:
   --limit <n>           Max items to process (dev mode; default 500 for fetch-wikidata)
@@ -48,6 +52,7 @@ Options:
   --film-year-to <n>    popular-catalog-batch: maximum film release year
   --end-date <date>     reshuffle-schedule: final puzzle date YYYY-MM-DD
   --seed <text>          Deterministic reshuffle seed
+  --days <n>             hybrid-schedule: maximum future days to plan
 
 Checkpoints are written to seeding/out/ and later steps read the previous
 step's checkpoint, so each step is independently re-runnable.
@@ -60,6 +65,7 @@ async function main() {
       limit: { type: "string" },
       target: { type: "string" },
       "batch-size": { type: "string" },
+      days: { type: "string" },
       count: { type: "string" },
       "start-date": { type: "string" },
       "all-languages": { type: "boolean", default: false },
@@ -85,6 +91,7 @@ async function main() {
   const batchSize = values["batch-size"]
     ? Number.parseInt(values["batch-size"], 10)
     : 100;
+  const dayLimit = values.days ? Number.parseInt(values.days, 10) : undefined;
   if (values.count && (!Number.isFinite(count) || count! <= 0)) {
     console.error("--count must be a positive integer");
     process.exit(1);
@@ -188,6 +195,22 @@ async function main() {
         throw new Error("--target and --batch-size must be positive integers");
       }
       await expandCatalog({ target, batchSize, apply: values.apply });
+      break;
+    case "hybrid-schedule":
+      if (
+        dayLimit !== undefined &&
+        (!Number.isInteger(dayLimit) || dayLimit <= 0)
+      ) {
+        throw new Error("--days must be a positive integer");
+      }
+      await buildHybridSchedule({
+        seed: values.seed ?? "adaptle",
+        days: dayLimit,
+        apply: values.apply,
+      });
+      break;
+    case "generate-schedule-threads":
+      await generateScheduleThreads({ limit });
       break;
     default:
       console.log(USAGE);

@@ -38,6 +38,7 @@ through the `adaptle://` deep link.
 
 - **No Live LLM in Production:** Users never trigger live AI calls while playing, keeping runtime inference costs at **\$0/month** with zero latency.
 - **One-Time Offline Seeding:** Run a lightweight model (**Gemini 2.5 Flash-Lite** or **GPT-6 Luna**) locally on your computer once when building your initial 250–500 puzzles to generate `setting_hint`, `character_hint`, and `common_thread_pairs` (**< \$0.35 total one-time cost**), then store them permanently in Supabase.
+- **Hybrid future scheduling:** The full playable catalogue is planned with exactly **3 recent adaptations (1996+) + 2 older/classic adaptations per day**. Future dates receive only reviewed Common Threads; historical/today dates are protected.
 
 ---
 
