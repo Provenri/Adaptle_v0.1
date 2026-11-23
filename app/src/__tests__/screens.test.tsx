@@ -7,6 +7,7 @@ import LibraryScreen from '@/app/library';
 import PrivacyPolicyScreen from '@/app/privacy';
 import ContactScreen from '@/app/contact';
 import ImpressumScreen from '@/app/impressum';
+import SharedPracticeScreen from '@/app/practice';
 import { bonusBooks, demoPuzzle, demoRoundDetails } from '@/test-fixtures/demo-puzzle';
 import type { ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import * as dailyPuzzleModule from '@/lib/daily-puzzle';
@@ -69,6 +70,7 @@ jest.mock('@/lib/local-storage', () => {
 
 jest.mock('expo-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
+  useLocalSearchParams: () => ({}),
   useRouter: () => ({
     canGoBack: () => false,
     back: () => undefined,
@@ -369,6 +371,11 @@ describe('tab screens', () => {
     const impressum = await render(<ImpressumScreen />, { wrapper: AppDataProvider });
     expect(impressum.getByText('Impressum')).toBeTruthy();
     expect(impressum.getByText('Legal details configuration incomplete')).toBeTruthy();
+  });
+
+  it('keeps direct shared practice links on a focused completion screen', async () => {
+    const screen = await render(<SharedPracticeScreen />, { wrapper: AppDataProvider });
+    expect(screen.getByText('Practice link unavailable')).toBeTruthy();
   });
 });
 

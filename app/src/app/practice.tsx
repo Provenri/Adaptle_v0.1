@@ -1,13 +1,14 @@
 import Head from 'expo-router/head';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AdaptationPractice } from '@/components/adaptation-practice';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { normalizeIsbn13, practiceDeepLink } from '@/lib/practice-sharing';
+import { normalizeIsbn13, practiceDeepLink, practiceWebUrl } from '@/lib/practice-sharing';
 
 export default function SharedPracticeScreen() {
   const router = useRouter();
@@ -24,8 +25,26 @@ export default function SharedPracticeScreen() {
     typeof params.tmdbId === 'string' && /^\d+$/.test(params.tmdbId)
       ? Number(params.tmdbId)
       : undefined;
+  const [closed, setClosed] = useState(false);
 
-  const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const close = () => {
+    if (Platform.OS !== 'web' && router.canGoBack()) {
+      router.back();
+      return;
+    }
+    setClosed(true);
+  };
+  const openFullApp = () => {
+    if (Platform.OS === 'web') router.replace('/');
+  };
+  const shareAgain = async () => {
+    if (!isbn13) return;
+    await Share.share({
+      message: `Can you identify the one-line premise for ${title || 'this book-to-screen story'}? Play: ${practiceWebUrl(isbn13, title, author, tmdbId)}`,
+      url: practiceWebUrl(isbn13, title, author, tmdbId),
+      title: `Play ${title || 'Adaptle'}`,
+    });
+  };
   const pageTitle = title ? `Play ${title} — Adaptle` : 'Play an Adaptle adaptation';
 
   return (
@@ -49,7 +68,44 @@ export default function SharedPracticeScreen() {
       </Head>
       <ThemedView style={styles.root}>
         <SafeAreaView style={styles.safeArea}>
-          {isbn13 ? (
+          {isbn13 && closed ? (
+            <View style={styles.invalid}>
+              <ThemedText type="smallBold" style={styles.eyebrow}>
+                CHALLENGE COMPLETE
+              </ThemedText>
+              <ThemedText type="subtitle" style={styles.centered}>
+                Thanks for playing
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.description}>
+                Challenge someone else, replay this adaptation, or explicitly open the full Adaptle
+                app.
+              </ThemedText>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void shareAgain()}
+                style={styles.primaryButton}>
+                <ThemedText type="smallBold" style={styles.lightText}>
+                  Share this practice
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setClosed(false)}
+                style={styles.openAppButton}>
+                <ThemedText type="smallBold" style={styles.openAppText}>
+                  Play again
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={openFullApp}
+                style={styles.openAppButton}>
+                <ThemedText type="smallBold" style={styles.openAppText}>
+                  Open full Adaptle
+                </ThemedText>
+              </Pressable>
+            </View>
+          ) : isbn13 ? (
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}>
@@ -118,6 +174,15 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   openAppText: { color: '#173E32' },
+  primaryButton: {
+    alignItems: 'center',
+    backgroundColor: '#173E32',
+    borderRadius: 999,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+  },
+  lightText: { color: '#FFFFFF' },
+  centered: { textAlign: 'center' },
   invalid: {
     alignItems: 'center',
     alignSelf: 'center',
