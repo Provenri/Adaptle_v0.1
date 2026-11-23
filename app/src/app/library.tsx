@@ -806,6 +806,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     height: 44,
     justifyContent: 'center',
+    transform: [{ translateY: 6 }],
     width: 44,
   },
   filters: {
