@@ -110,6 +110,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: Spacing.three,
   },
-  tabLabel: { fontSize: 14, fontWeight: '600', lineHeight: 18 },
+  tabLabel: { fontSize: 14, fontWeight: '700', lineHeight: 18 },
   pressed: { opacity: 0.65 },
 });
