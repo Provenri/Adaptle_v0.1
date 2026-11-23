@@ -11,6 +11,7 @@ import { preparePopularCatalogBatch } from "./steps/popular-catalog-batch.js";
 import { reshuffleSchedule } from "./steps/reshuffle-schedule.js";
 import { rebalanceThreads } from "./steps/rebalance-threads.js";
 import { backfillPremisePuzzles } from "./steps/backfill-story-premises.js";
+import { expandCatalog } from "./steps/catalog-expansion.js";
 
 const USAGE = `Adaptle seeding pipeline
 
@@ -30,9 +31,12 @@ Steps:
   reshuffle-schedule    Rebalance book dates while preserving bonus eligibility
   rebalance-threads     Move bonuses to prioritize prior book exposure
   backfill-premise-puzzles Generate tailored premise answers, two decoys + keyword hints; dry-run by default
+  catalog-expansion     Expand fully playable adaptations toward a target; dry-run by default
 
 Options:
   --limit <n>           Max items to process (dev mode; default 500 for fetch-wikidata)
+  --target <n>          catalog-expansion: total adapted row target (default 1000)
+  --batch-size <n>       catalog-expansion: accepted rows per review batch (default 100)
   --count <n>           generate-threads: number of pairs to produce (default 50)
   --start-date <date>   schedule-and-upload: first puzzle date YYYY-MM-DD (default: tomorrow CET)
   --all-languages       fetch-wikidata: include non-English-language books
@@ -54,6 +58,8 @@ async function main() {
     allowPositionals: true,
     options: {
       limit: { type: "string" },
+      target: { type: "string" },
+      "batch-size": { type: "string" },
       count: { type: "string" },
       "start-date": { type: "string" },
       "all-languages": { type: "boolean", default: false },
@@ -75,6 +81,10 @@ async function main() {
     process.exit(1);
   }
   const count = values.count ? Number.parseInt(values.count, 10) : undefined;
+  const target = values.target ? Number.parseInt(values.target, 10) : 1_000;
+  const batchSize = values["batch-size"]
+    ? Number.parseInt(values["batch-size"], 10)
+    : 100;
   if (values.count && (!Number.isFinite(count) || count! <= 0)) {
     console.error("--count must be a positive integer");
     process.exit(1);
@@ -167,6 +177,17 @@ async function main() {
         refreshDecoys: values["refresh-decoys"],
         isbn13: values.isbn,
       });
+      break;
+    case "catalog-expansion":
+      if (
+        !Number.isInteger(target) ||
+        target <= 0 ||
+        !Number.isInteger(batchSize) ||
+        batchSize <= 0
+      ) {
+        throw new Error("--target and --batch-size must be positive integers");
+      }
+      await expandCatalog({ target, batchSize, apply: values.apply });
       break;
     default:
       console.log(USAGE);

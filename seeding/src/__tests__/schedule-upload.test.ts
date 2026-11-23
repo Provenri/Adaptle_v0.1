@@ -10,7 +10,10 @@ import {
 } from "../steps/schedule-upload.js";
 import type { CommonThread, HintedBook } from "../types.js";
 
-function makeBook(isbn13: string): HintedBook {
+function makeBook(
+  isbn13: string,
+  overrides: Partial<HintedBook> = {},
+): HintedBook {
   return {
     bookQid: "Q1",
     filmQid: "Q2",
@@ -20,6 +23,7 @@ function makeBook(isbn13: string): HintedBook {
     movieTitle: "WD Movie",
     movieDirector: "WD Director",
     movieReleaseYear: 1990,
+    sourceNotability: 0,
     tmdbId: 1,
     bookPublicationYear: 1980,
     subjects: [],
@@ -27,6 +31,11 @@ function makeBook(isbn13: string): HintedBook {
     coverTheme: "literary_terracotta",
     numberOfPages: 200,
     openLibraryWorkKey: "/works/OL1W",
+    readingLogCount: 0,
+    ratingsCount: 0,
+    ratingsAverage: null,
+    editionCount: 0,
+    popularityScore: 0,
     tmdbTitle: "TMDB Movie",
     releaseYear: 1991,
     director: "TMDB Director",
@@ -42,6 +51,7 @@ function makeBook(isbn13: string): HintedBook {
       "Strangers race to recover what their town has lost.",
     ],
     premiseKeywords: ["strangers", "dangerous truth"],
+    ...overrides,
   };
 }
 
@@ -132,6 +142,7 @@ describe("row mappers", () => {
       book: makeBook(isbn(1)),
       scheduledDate: "2026-12-01",
     });
+
     expect(row).toMatchObject({
       isbn13: isbn(1),
       movie_title: "TMDB Movie",
@@ -148,6 +159,37 @@ describe("row mappers", () => {
       premise_keywords: ["strangers", "dangerous truth"],
       scheduled_date: "2026-12-01",
       metadata_source: "wikidata_openlibrary",
+    });
+  });
+
+  describe("catalog expansion ranking", () => {
+    it("targets an eighty percent recent mix without excluding classics", async () => {
+      const { isHybridMixReady, selectHybridBatch } =
+        await import("../steps/catalog-expansion.js");
+      const recent = Array.from({ length: 90 }, (_, index) =>
+        makeBook(isbn(1000 + index), {
+          releaseYear: 2000 + (index % 25),
+          popularityScore: 4,
+        }),
+      );
+      const classics = Array.from({ length: 20 }, (_, index) =>
+        makeBook(isbn(2000 + index), {
+          releaseYear: 1970 + index,
+          popularityScore: 5.5,
+        }),
+      );
+      const selected = selectHybridBatch([...classics, ...recent], 100);
+
+      expect(isHybridMixReady(selected, 100)).toBe(true);
+      expect(
+        selected.filter((book) => (book.releaseYear ?? 0) >= 1996),
+      ).toHaveLength(80);
+      expect(
+        selected.filter((book) => (book.releaseYear ?? 0) < 1996),
+      ).toHaveLength(20);
+      expect(isHybridMixReady([...recent.slice(0, 60), ...classics], 100)).toBe(
+        false,
+      );
     });
   });
 

@@ -14,6 +14,7 @@ export const WikidataPairSchema = z.object({
   movieDirector: z.string().nullable(),
   /** Film release year from Wikidata P577 (CC0) — safe for LLM prompts. */
   movieReleaseYear: z.number().int().nullable(),
+  sourceNotability: z.number().nonnegative().default(0),
   tmdbId: z.number().int().positive(),
   bookPublicationYear: z.number().int().nullable(),
 });
@@ -38,6 +39,11 @@ export const EnrichedBookSchema = WikidataPairSchema.extend({
   coverTheme: CoverThemeSchema,
   numberOfPages: z.number().int().positive().nullable(),
   openLibraryWorkKey: z.string().nullable(),
+  readingLogCount: z.number().int().nonnegative().default(0),
+  ratingsCount: z.number().int().nonnegative().default(0),
+  ratingsAverage: z.number().min(0).max(5).nullable().default(null),
+  editionCount: z.number().int().nonnegative().default(0),
+  popularityScore: z.number().nonnegative().default(0),
 });
 export type EnrichedBook = z.infer<typeof EnrichedBookSchema>;
 

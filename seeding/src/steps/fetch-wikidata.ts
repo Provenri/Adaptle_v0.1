@@ -1,8 +1,8 @@
-import { writeCheckpoint } from '../lib/checkpoint.js';
-import { fetchJson } from '../lib/http.js';
-import { WikidataPairSchema, type WikidataPair } from '../types.js';
+import { writeCheckpoint } from "../lib/checkpoint.js";
+import { fetchJson } from "../lib/http.js";
+import { WikidataPairSchema, type WikidataPair } from "../types.js";
 
-const SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql';
+const SPARQL_ENDPOINT = "https://query.wikidata.org/sparql";
 
 /**
  * Builds the SPARQL query for verified book-to-movie adaptation pairs:
@@ -21,28 +21,30 @@ export function buildSparqlQuery(options: {
   filmYearFrom?: number;
   filmYearTo?: number;
 }): string {
-  const languageFilter = options.englishOnly ? '?film wdt:P364 wd:Q1860 .' : '';
+  const languageFilter = options.englishOnly ? "?film wdt:P364 wd:Q1860 ." : "";
   const popularityBinding = options.popularFirst
-    ? '?book wikibase:sitelinks ?bookSitelinks .'
-    : '';
+    ? "?book wikibase:sitelinks ?bookSitelinks ."
+    : "";
   const popularityAggregate = options.popularFirst
-    ? '(MAX(?bookSitelinks) AS ?popularity)'
-    : '(0 AS ?popularity)';
-  const popularityOrder = options.popularFirst ? 'ORDER BY DESC(?popularity)' : '';
+    ? "(MAX(?bookSitelinks) AS ?popularity)"
+    : "(0 AS ?popularity)";
+  const popularityOrder = options.popularFirst
+    ? "ORDER BY DESC(?popularity)"
+    : "";
   const releaseDateRange =
     options.filmYearFrom !== undefined || options.filmYearTo !== undefined
-      ? '?film wdt:P577 ?filmDate .'
-      : 'OPTIONAL { ?film wdt:P577 ?filmDate . }';
+      ? "?film wdt:P577 ?filmDate ."
+      : "OPTIONAL { ?film wdt:P577 ?filmDate . }";
   const filmYearFilter = [
     options.filmYearFrom !== undefined
       ? `FILTER(YEAR(?filmDate) >= ${options.filmYearFrom})`
-      : '',
+      : "",
     options.filmYearTo !== undefined
       ? `FILTER(YEAR(?filmDate) <= ${options.filmYearTo})`
-      : '',
-  ].join('\n      ');
+      : "",
+  ].join("\n      ");
   return `
-SELECT ?book ?bookLabel ?authorLabel ?isbn13 ?film ?filmLabel ?director ?directorLabel ?tmdbId ?pubYear ?filmYear WHERE {
+SELECT ?book ?bookLabel ?authorLabel ?isbn13 ?film ?filmLabel ?director ?directorLabel ?tmdbId ?pubYear ?filmYear ?popularity WHERE {
   {
     SELECT ?book ?film
            (SAMPLE(?isbn) AS ?isbn13)
@@ -90,11 +92,11 @@ interface SparqlResponse {
 }
 
 function qidFromUri(uri: string): string {
-  return uri.slice(uri.lastIndexOf('/') + 1);
+  return uri.slice(uri.lastIndexOf("/") + 1);
 }
 
 export function normalizeIsbn13(raw: string): string | null {
-  const digits = raw.replace(/[^0-9Xx]/g, '');
+  const digits = raw.replace(/[^0-9Xx]/g, "");
   return /^\d{13}$/.test(digits) ? digits : null;
 }
 
@@ -122,6 +124,7 @@ export function parseSparqlResults(response: SparqlResponse): WikidataPair[] {
     const movieTitle = row.filmLabel?.value;
     const isbn13 = normalizeIsbn13(isbnRaw);
     const tmdbId = Number.parseInt(tmdbRaw, 10);
+    const sourceNotability = Number.parseInt(row.popularity?.value ?? "0", 10);
 
     // Skip rows with missing English labels, malformed ISBNs, or bad TMDB ids.
     if (!isRealLabel(bookTitle, bookQid)) continue;
@@ -135,14 +138,19 @@ export function parseSparqlResults(response: SparqlResponse): WikidataPair[] {
     seenBooks.add(bookQid);
 
     const pubYearRaw = row.pubYear?.value;
-    const bookPublicationYear = pubYearRaw ? Number.parseInt(pubYearRaw, 10) : null;
+    const bookPublicationYear = pubYearRaw
+      ? Number.parseInt(pubYearRaw, 10)
+      : null;
 
     const filmYearRaw = row.filmYear?.value;
-    const movieReleaseYear = filmYearRaw ? Number.parseInt(filmYearRaw, 10) : null;
+    const movieReleaseYear = filmYearRaw
+      ? Number.parseInt(filmYearRaw, 10)
+      : null;
 
     // Director label is optional; ignore when it's a bare QID (no English label).
     const directorRaw = row.directorLabel?.value;
-    const movieDirector = directorRaw && !/^Q\d+$/.test(directorRaw) ? directorRaw : null;
+    const movieDirector =
+      directorRaw && !/^Q\d+$/.test(directorRaw) ? directorRaw : null;
 
     pairs.push(
       WikidataPairSchema.parse({
@@ -155,8 +163,11 @@ export function parseSparqlResults(response: SparqlResponse): WikidataPair[] {
         movieDirector,
         movieReleaseYear,
         tmdbId,
+        sourceNotability: Number.isFinite(sourceNotability)
+          ? sourceNotability
+          : 0,
         bookPublicationYear,
-      })
+      }),
     );
   }
   return pairs;
@@ -170,22 +181,22 @@ export async function fetchWikidata(options: {
   const url = `${SPARQL_ENDPOINT}?query=${encodeURIComponent(query)}`;
   console.log(
     `Querying Wikidata for up to ${options.limit} adaptation pairs` +
-      (options.englishOnly ? ' (English-language books only)...' : '...')
+      (options.englishOnly ? " (English-language books only)..." : "..."),
   );
 
   const response = await fetchJson<SparqlResponse>(url, {
-    headers: { Accept: 'application/sparql-results+json' },
+    headers: { Accept: "application/sparql-results+json" },
     retries: 3,
     retryDelayMs: 2_000,
   });
-  if (!response) throw new Error('Empty response from Wikidata.');
+  if (!response) throw new Error("Empty response from Wikidata.");
 
   const pairs = parseSparqlResults(response);
   console.log(
-    `Got ${response.results.bindings.length} rows -> ${pairs.length} unique valid pairs.`
+    `Got ${response.results.bindings.length} rows -> ${pairs.length} unique valid pairs.`,
   );
 
-  const path = writeCheckpoint('01-wikidata-pairs', pairs);
+  const path = writeCheckpoint("01-wikidata-pairs", pairs);
   console.log(`Checkpoint written: ${path}`);
   return path;
 }
