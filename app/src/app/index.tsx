@@ -16,6 +16,7 @@ import { StoryPremise } from '@/components/story-premise';
 import { PremiseQuestion } from '@/components/premise-question';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TabPlayIcon } from '@/components/tab-icons';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { APP_ICON } from '@/assets';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
@@ -104,6 +105,8 @@ function WelcomeScreen({
   streak: number;
   onContinue: () => void;
 }) {
+  const [instructionsOpen, setInstructionsOpen] = useState(firstVisit);
+
   return (
     <ThemedView style={styles.root}>
       <SafeAreaView style={styles.welcomeSafeArea}>
@@ -126,16 +129,34 @@ function WelcomeScreen({
               : '5 adaptations. 1 common thread. 18 points to play for.'}
           </ThemedText>
           {!completedScore ? (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-              Identify each book-to-screen story from its one-line premise, unlock clues when
-              needed, then find the shared connection in the bonus round. Save interesting books to
-              your shelf as you play.
-            </ThemedText>
+            <View style={styles.welcomePlayMark}>
+              <TabPlayIcon color="#117579" />
+            </View>
           ) : null}
           <PrimaryButton
             label={completedScore ? "View today's results" : 'Play today’s puzzle'}
             onPress={onContinue}
           />
+          {!completedScore ? (
+            <View style={styles.instructions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: instructionsOpen }}
+                onPress={() => setInstructionsOpen((open) => !open)}
+                style={styles.instructionsToggle}>
+                <ThemedText type="smallBold" style={styles.instructionsLabel}>
+                  {instructionsOpen ? 'How to play ▴' : 'How to play ▾'}
+                </ThemedText>
+              </Pressable>
+              {instructionsOpen ? (
+                <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+                  Identify each book-to-screen story from its one-line premise, unlock clues when
+                  needed, then find the shared connection in the bonus round. Save interesting books
+                  to your shelf as you play.
+                </ThemedText>
+              ) : null}
+            </View>
+          ) : null}
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -914,6 +935,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  welcomePlayMark: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.one,
+  },
+  instructions: { alignItems: 'center', gap: Spacing.one, width: '100%' },
+  instructionsToggle: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
+  instructionsLabel: { color: '#117579' },
   statusSafeArea: {
     flex: 1,
     justifyContent: 'center',
