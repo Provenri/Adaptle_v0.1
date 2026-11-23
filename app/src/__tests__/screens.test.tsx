@@ -249,7 +249,7 @@ describe('tab screens', () => {
       })
     );
     await fireEvent.press(screen.getByRole('button', { name: 'Reading' }));
-    expect(screen.getByText('Reading 1')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reading 1' })).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Reading 1' }));
     expect(screen.getByRole('button', { name: /Play adaptation/ })).toBeTruthy();
   });

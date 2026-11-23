@@ -301,6 +301,7 @@ function ShelfFilterButton({
 }) {
   return (
     <Pressable
+      accessibilityLabel={`${label} ${count}`}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
@@ -311,8 +312,12 @@ function ShelfFilterButton({
       ]}>
       <ThemedText
         type="smallBold"
-        style={selected ? styles.filterButtonSelectedText : styles.filterButtonText}>
-        {label} {count}
+        style={selected ? styles.filterButtonSelectedText : styles.filterButtonText}
+        numberOfLines={1}>
+        {label}
+      </ThemedText>
+      <ThemedText type="small" style={selected ? styles.filterCountSelected : styles.filterCount}>
+        {count}
       </ThemedText>
     </Pressable>
   );
@@ -838,9 +843,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     flex: 1,
-    minHeight: 36,
+    minHeight: 48,
     justifyContent: 'center',
-    paddingHorizontal: 1,
+    paddingHorizontal: Spacing.one,
     paddingVertical: Spacing.one,
   },
   filterButtonSelected: { backgroundColor: '#173E32', borderColor: '#173E32' },
@@ -849,6 +854,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     lineHeight: 16,
+    textAlign: 'center',
+  },
+  filterCount: {
+    color: '#60646C',
+    fontSize: 12,
+    lineHeight: 14,
+    textAlign: 'center',
+  },
+  filterCountSelected: {
+    color: '#DCEBE5',
+    fontSize: 12,
+    lineHeight: 14,
     textAlign: 'center',
   },
   searchInput: {
