@@ -7,7 +7,7 @@ export function TabPlayIcon({ large = false }: { color: string; large?: boolean 
     <ThemedText
       accessibilityElementsHidden
       style={{ fontSize: large ? 44 : 22, lineHeight: large ? 50 : 26 }}>
-      📚🎬
+      📚 + 🎬
     </ThemedText>
   );
 }
