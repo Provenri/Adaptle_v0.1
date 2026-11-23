@@ -13,7 +13,6 @@ import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 import { TabLibraryIcon, TabPlayIcon } from './tab-icons';
 import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
 
 export default function AppTabs() {
   return (
@@ -38,12 +37,16 @@ type TabButtonProps = TabTriggerSlotProps & {
 };
 
 export function TabButton({ children, icon: Icon, isFocused, ...props }: TabButtonProps) {
-  const color = isFocused ? '#117579' : Colors.light.textSecondary;
+  const color = isFocused ? '#FFFFFF' : Colors.light.text;
   return (
     <Pressable
       accessibilityLabel={typeof children === 'string' ? children : undefined}
       {...(props as React.ComponentProps<typeof Pressable>)}
-      style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
+      style={({ pressed }) => [
+        styles.tabButton,
+        isFocused && styles.tabButtonSelected,
+        pressed && styles.pressed,
+      ]}>
       <View style={styles.tabButtonContent}>
         <Icon color={color} />
         <ThemedText style={[styles.tabLabel, { color }]}>{children}</ThemedText>
@@ -58,9 +61,7 @@ export function CustomTabList(props: TabListProps) {
     <View
       {...props}
       style={[styles.tabListContainer, { paddingBottom: Math.max(insets.bottom, 6) }]}>
-      <ThemedView type="background" style={styles.innerContainer}>
-        {props.children}
-      </ThemedView>
+      <View style={styles.innerContainer}>{props.children}</View>
     </View>
   );
 }
@@ -69,31 +70,47 @@ const styles = StyleSheet.create({
   tabSlot: { height: '100%' },
   tabListContainer: {
     alignItems: 'center',
-    borderTopColor: '#E0E1E6',
-    borderTopWidth: StyleSheet.hairlineWidth,
     bottom: 0,
     flexDirection: 'row',
     left: 0,
     position: 'absolute',
     right: 0,
+    pointerEvents: 'box-none',
   },
   innerContainer: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    gap: Spacing.three,
+    justifyContent: 'center',
     maxWidth: MaxContentWidth,
-    minHeight: 58,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.one,
+    paddingBottom: Spacing.two,
+    paddingHorizontal: Spacing.three,
     width: '100%',
   },
-  tabButton: { flex: 1, maxWidth: 180 },
+  tabButton: {
+    backgroundColor: '#F8F4EE',
+    borderColor: '#D8DED9',
+    borderRadius: 999,
+    borderWidth: 1,
+    flex: 1,
+    maxWidth: 190,
+    shadowColor: '#173E32',
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  tabButtonSelected: {
+    backgroundColor: '#173E32',
+    borderColor: '#173E32',
+  },
   tabButtonContent: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: Spacing.two,
     justifyContent: 'center',
-    minHeight: 52,
+    minHeight: 48,
+    paddingHorizontal: Spacing.three,
   },
   tabLabel: { fontSize: 14, fontWeight: '600', lineHeight: 18 },
   pressed: { opacity: 0.65 },
