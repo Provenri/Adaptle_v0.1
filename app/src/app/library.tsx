@@ -19,6 +19,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { TypographicCover } from '@/components/typographic-cover';
 import { ThemedText } from '@/components/themed-text';
@@ -135,12 +136,35 @@ export default function LibraryScreen() {
               </View>
             </View>
             <Pressable
+              accessibilityLabel="+ Add Book"
               accessibilityRole="button"
               onPress={() => setAddBookOpen(true)}
               style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
-              <ThemedText type="smallBold" style={styles.addButtonText}>
-                + Add Book
-              </ThemedText>
+              <Svg
+                accessibilityLabel="Add Book"
+                fill="none"
+                height={32}
+                stroke="#163C32"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+                viewBox="0 0 24 24"
+                width={32}>
+                <Path
+                  d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H18v19H6.5a2.5 2.5 0 0 1 0-5H18"
+                  fill="#FFFFFF"
+                />
+                <Rect fill="#FFFFFF" height="3" rx="0.8" width="6" x="8.5" y="6" />
+                <Circle
+                  cx="17.5"
+                  cy="17.5"
+                  fill="#FFFFFF"
+                  r="4.5"
+                  stroke="#163C32"
+                  strokeWidth="1.8"
+                />
+                <Path d="M17.5 15.5v4M15.5 17.5h4" />
+              </Svg>
             </Pressable>
           </View>
 
@@ -785,7 +809,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     flexShrink: 0,
   },
-  addButtonText: { color: '#173E32' },
   filters: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
