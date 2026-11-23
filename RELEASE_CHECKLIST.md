@@ -37,6 +37,9 @@ Verify:
 - RLS still limits personal tables to the authenticated user.
 - The development-only replay control is absent from production behavior.
 - No service-role, OpenAI, or TMDB key is in the client bundle.
+- Do not publish `/impressum` until real operator name, serviceable postal address, email, direct contact route, and applicable entity/editorial details are configured. The placeholder warning must be absent in release.
+- Contact notifications require server-side `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, and `CONTACT_TO_EMAIL`; verify the sender domain and perform a real submission.
+- Verify anonymous users cannot read or write `contact_requests` directly.
 
 ## Production build
 
@@ -44,6 +47,12 @@ The EAS production environment must contain only:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- Optional `EXPO_PUBLIC_IMPRESSUM_OPERATOR_NAME`
+- Optional `EXPO_PUBLIC_IMPRESSUM_POSTAL_ADDRESS`
+- Optional `EXPO_PUBLIC_IMPRESSUM_EMAIL`
+- Optional `EXPO_PUBLIC_IMPRESSUM_DIRECT_CONTACT`
+- Optional `EXPO_PUBLIC_IMPRESSUM_ENTITY_DETAILS`
+- Optional `EXPO_PUBLIC_IMPRESSUM_RESPONSIBLE_PERSON`
 
 ## Public privacy policy
 

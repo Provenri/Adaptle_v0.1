@@ -5,6 +5,8 @@ import { fireEvent, render } from '@testing-library/react-native';
 import PlayScreen from '@/app/index';
 import LibraryScreen from '@/app/library';
 import PrivacyPolicyScreen from '@/app/privacy';
+import ContactScreen from '@/app/contact';
+import ImpressumScreen from '@/app/impressum';
 import { bonusBooks, demoPuzzle, demoRoundDetails } from '@/test-fixtures/demo-puzzle';
 import type { ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import * as dailyPuzzleModule from '@/lib/daily-puzzle';
@@ -356,6 +358,16 @@ describe('tab screens', () => {
     expect(screen.getByText('Privacy Policy')).toBeTruthy();
     expect(screen.getAllByText(/adaptle\.privacy@gmail\.com/).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Request data deletion' })).toBeTruthy();
+  });
+
+  it('shows contact and incomplete Impressum scaffolding', async () => {
+    const contact = await render(<ContactScreen />, { wrapper: AppDataProvider });
+    expect(contact.getByText('Contact Adaptle')).toBeTruthy();
+    expect(contact.getByRole('button', { name: 'Send message' })).toBeTruthy();
+
+    const impressum = await render(<ImpressumScreen />, { wrapper: AppDataProvider });
+    expect(impressum.getByText('Impressum')).toBeTruthy();
+    expect(impressum.getByText('Legal details configuration incomplete')).toBeTruthy();
   });
 });
 

@@ -26,7 +26,7 @@
 - **Database:** **Supabase PostgreSQL** hosted in **Frankfurt (`eu-central-1`)** for low European latency and clean GDPR alignment.
 - **Authentication:** **Supabase Auth** with **Anonymous Sign-In** enabled at launch so users can play immediately without registering, then link Apple/Google Sign-In later to sync streaks and shelves.
 - **Daily Puzzle Scheduler:** **Supabase `pg_cron`** to publish the next 6-round daily puzzle automatically at midnight CET/UTC.
-- **Edge Functions (Deno / TypeScript):** Securely proxies **TMDB** and **Open Library** lookups so API keys stay hidden from the client bundle.
+- **Edge Functions (Deno / TypeScript):** Securely proxies **TMDB**, **Open Library**, and contact submissions so API keys and provider secrets stay hidden from the client bundle.
 
 ### AI Strategy: Option B — One-Time Offline LLM Seeding (Zero Live AI Costs)
 

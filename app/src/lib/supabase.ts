@@ -5,6 +5,7 @@ import type { OfflineMutation } from './offline-queue';
 import { PermanentMutationError } from './offline-queue';
 import type { DailyScore } from './scores';
 import type { BookCandidate, LibraryBook } from '@/data/library-data';
+import type { ContactSubmission } from './contact';
 
 let client: SupabaseClient | null = null;
 
@@ -367,6 +368,38 @@ export async function resolvePracticeAdaptation(
   });
   const payload = await invokeBookSearch(`?${params.toString()}`);
   return payload.items[0] ?? null;
+}
+
+export async function submitContactRequest(
+  submission: ContactSubmission
+): Promise<{ requestId: string; notificationStatus: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error('Supabase is not configured');
+  await initializeAnonymousSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error('A signed-in session is required to send a message');
+
+  const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  if (!baseUrl) throw new Error('Supabase URL is not configured');
+  const user = await supabase.auth.getUser();
+  const response = await fetch(`${baseUrl}/functions/v1/contact-proxy`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ...submission, anonymousUserId: user.data.user?.id }),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      typeof payload.error === 'string' ? payload.error : 'Message could not be sent'
+    );
+  }
+  return payload as { requestId: string; notificationStatus: string };
 }
 
 async function invokeBookSearch(queryString: string): Promise<{ items: BookCandidate[] }> {

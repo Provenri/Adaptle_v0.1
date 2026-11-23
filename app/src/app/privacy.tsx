@@ -9,8 +9,9 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { APP_ICON } from '@/assets';
 import { getSupabaseClient, initializeAnonymousSession } from '@/lib/supabase';
+import { LEGAL_CONFIG } from '@/lib/legal';
 
-const CONTACT_EMAIL = 'adaptle.privacy@gmail.com';
+const CONTACT_EMAIL = LEGAL_CONFIG.contactEmail;
 const EFFECTIVE_DATE = '21 November 2026';
 
 export default function PrivacyPolicyScreen() {
@@ -107,6 +108,12 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
               SDK.
             </PolicyText>
             <PolicyText>
+              <PolicyStrong>Contact submissions.</PolicyStrong> If you use the contact form, Adaptle
+              stores the category, subject, message, reply email, optional name, anonymous account
+              ID, and submission time so the request can be answered or investigated. Do not include
+              passwords, payment information, or other unrelated sensitive data.
+            </PolicyText>
+            <PolicyText>
               <PolicyStrong>Local device storage.</PolicyStrong> Cached puzzles, your library,
               scores, pending offline changes, and the anonymous session are stored locally with
               MMKV so the app works across restarts and offline.
@@ -157,6 +164,10 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
               <Link href="https://expo.dev/privacy">expo.dev/privacy</Link> and{' '}
               <Link href="https://policies.google.com/privacy">policies.google.com/privacy</Link>.
             </PolicyText>
+            <PolicyText>
+              If configured, a transactional email provider sends contact-notification messages to
+              the Adaptle support mailbox. Your reply email is used only to respond to your request.
+            </PolicyText>
           </PolicySection>
 
           <PolicySection title="5. Storage, security, and retention">
@@ -205,6 +216,10 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
               uninstalling the app. Clearing local storage alone does not delete
               already-synchronized Supabase records, so email {CONTACT_EMAIL} for server-side
               deletion.
+            </PolicyText>
+            <PolicyText>
+              Contact requests are normally retained for six months after resolution unless a
+              privacy, legal, security, copyright, or fraud investigation requires longer retention.
             </PolicyText>
           </PolicySection>
 

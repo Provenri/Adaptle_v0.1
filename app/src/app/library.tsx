@@ -5,6 +5,7 @@ import {
   type PermissionResponse,
 } from 'expo-camera';
 import { Image } from 'expo-image';
+import { Link, type Href } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
@@ -235,14 +236,26 @@ export default function LibraryScreen() {
           ) : (
             <EmptyShelf query={query} onAdd={() => setAddBookOpen(true)} />
           )}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setPrivacyOpen(true)}
-            style={styles.privacyLink}>
-            <ThemedText type="small" themeColor="textSecondary">
-              Privacy Policy
-            </ThemedText>
-          </Pressable>
+          <View style={styles.legalLinks}>
+            <Link href={'/impressum' as Href} style={styles.legalLink}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Impressum
+              </ThemedText>
+            </Link>
+            <Link href={'/contact' as Href} style={styles.legalLink}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Contact
+              </ThemedText>
+            </Link>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setPrivacyOpen(true)}
+              style={styles.privacyLink}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Privacy Policy
+              </ThemedText>
+            </Pressable>
+          </View>
         </ScrollView>
 
         <AddBookModal onAdd={addBook} onClose={() => setAddBookOpen(false)} visible={addBookOpen} />
@@ -1005,8 +1018,17 @@ const styles = StyleSheet.create({
   permissionText: { color: '#A84732' },
   privacyLink: {
     alignItems: 'center',
-    paddingVertical: Spacing.four,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
   },
+  legalLinks: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingTop: Spacing.two,
+  },
+  legalLink: { color: '#60646C', fontSize: 14, padding: Spacing.two },
   errorText: { color: '#A84732', textAlign: 'center' },
   lightText: { color: '#FFFFFF' },
   darkText: { color: '#173E32' },
