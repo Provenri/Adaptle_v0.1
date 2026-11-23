@@ -785,8 +785,12 @@ const styles = StyleSheet.create({
   },
   filters: {
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D9DFDB',
+    borderRadius: 12,
+    borderWidth: 1,
     flexDirection: 'row',
-    gap: Spacing.one,
+    overflow: 'hidden',
   },
   shelfOverview: {
     backgroundColor: '#F4EEE6',
@@ -839,16 +843,15 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     alignItems: 'center',
-    borderColor: '#CCD2CF',
-    borderRadius: 999,
-    borderWidth: 1,
+    borderRightColor: '#E3E7E4',
+    borderRightWidth: 1,
     flex: 1,
     minHeight: 48,
     justifyContent: 'center',
     paddingHorizontal: Spacing.one,
     paddingVertical: Spacing.one,
   },
-  filterButtonSelected: { backgroundColor: '#173E32', borderColor: '#173E32' },
+  filterButtonSelected: { backgroundColor: '#173E32', borderRightColor: '#173E32' },
   filterButtonText: { color: '#173E32', fontSize: 13, lineHeight: 16, textAlign: 'center' },
   filterButtonSelectedText: {
     color: '#FFFFFF',
