@@ -37,7 +37,7 @@ type TabButtonProps = TabTriggerSlotProps & {
 };
 
 export function TabButton({ children, icon: Icon, isFocused, ...props }: TabButtonProps) {
-  const color = isFocused ? '#FFFFFF' : Colors.light.text;
+  const color = isFocused ? '#173E32' : Colors.light.text;
   return (
     <Pressable
       accessibilityLabel={typeof children === 'string' ? children : undefined}
@@ -101,8 +101,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   tabButtonSelected: {
-    backgroundColor: '#173E32',
+    backgroundColor: '#F8F4EE',
     borderColor: '#173E32',
+    borderWidth: 3,
   },
   tabButtonContent: {
     alignItems: 'center',
