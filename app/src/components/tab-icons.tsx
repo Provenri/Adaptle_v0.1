@@ -1,31 +1,78 @@
-import Svg, { Circle, Path, Rect, G } from 'react-native-svg';
+import Svg, { Circle, Defs, G, Mask, Path, Polygon, Rect } from 'react-native-svg';
 
-import { ThemedText } from './themed-text';
-
-export function TabPlayIcon({ large = false }: { color: string; large?: boolean }) {
+export function TabPlayIcon({
+  color,
+  active = false,
+  large = false,
+}: {
+  color: string;
+  active?: boolean;
+  large?: boolean;
+}) {
+  const size = large ? 44 : 24;
+  if (!active) {
+    return (
+      <Svg
+        accessibilityElementsHidden
+        fill="none"
+        height={size}
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+        width={size}>
+        <Path d="M2 5h6a4 4 0 0 1 4 4" />
+        <Path d="M22 5h-6a4 4 0 0 0-4 4" />
+        <Path d="M2 5v13h7a3 3 0 0 1 2.2 1" />
+        <Path d="M22 5v13h-7a3 3 0 0 0-2.2 1" />
+        <Circle cx="12" cy="12.5" fill="#FFFFFF" r="4.5" stroke={color} strokeWidth="2" />
+        <Polygon fill={color} points="11,10.5 14.2,12.5 11,14.5" stroke="none" />
+      </Svg>
+    );
+  }
   return (
-    <ThemedText
-      accessibilityElementsHidden
-      style={{ fontSize: large ? 44 : 22, lineHeight: large ? 50 : 26 }}>
-      📚 + 🎬
-    </ThemedText>
+    <Svg accessibilityElementsHidden fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Defs>
+        <Mask id="book-play-cutout" maskUnits="userSpaceOnUse">
+          <Rect fill="white" height="24" width="24" />
+          <Circle cx="12" cy="12.5" fill="black" r="5.5" />
+          <Circle cx="12" cy="12.5" fill="white" r="4" />
+          <Polygon fill="black" points="11,10.5 14.2,12.5 11,14.5" />
+        </Mask>
+      </Defs>
+      <G fill={color} mask="url(#book-play-cutout)">
+        <Path d="M2 4h6a4 4 0 0 1 4 4v11.5a3 3 0 0 0-3-2.5H2V4z" />
+        <Path d="M22 4h-6a4 4 0 0 0-4 4v11.5a3 3 0 0 1 3-2.5h7V4z" />
+      </G>
+    </Svg>
   );
 }
 
-export function TabLibraryIcon({ color }: { color: string }) {
+export function TabLibraryIcon({ color, active = false }: { color: string; active?: boolean }) {
+  if (active) {
+    return (
+      <Svg accessibilityElementsHidden fill={color} height={24} viewBox="0 0 24 24" width={24}>
+        <Rect height="16" rx="1" width="3.8" x="3" y="4" />
+        <Rect height="14" rx="1" width="3.8" x="8.5" y="6" />
+        <Path d="M14.1 6.8a1 1 0 0 1 .7-1.2l1.9-.5a1 1 0 0 1 1.2.7l3.3 12.5a1 1 0 0 1-.7 1.2l-1.9.5a1 1 0 0 1-1.2-.7L14.1 6.8z" />
+      </Svg>
+    );
+  }
   return (
-    <Svg accessibilityElementsHidden height={26} width={32} viewBox="0 0 34 28">
-      <Rect fill="#4F91D8" height="18" rx="1.2" width="6" x="2" y="6" />
-      <Path d="M2 10h6M2 17h6" stroke="#DCEBFA" strokeWidth="1.5" />
-      <Rect fill="#F0B43C" height="15" rx="1.2" width="5" x="9" y="9" />
-      <Circle cx="11.5" cy="18.5" fill="#FFE4A8" r="1" />
-      <Rect fill="#D36A63" height="20" rx="1.2" width="6" x="15" y="4" />
-      <Path d="M15 8h6M15 19h6" stroke="#F7D4D0" strokeWidth="1.3" />
-      <G transform="rotate(-12 27 18)">
-        <Rect fill="#62A7E3" height="18" rx="1.2" width="5.5" x="24" y="9" />
-        <Path d="M24 13h5.5M24 20h5.5" stroke="#E1F0FC" strokeWidth="1.3" />
-      </G>
-      <Path d="M1 25.5h32" stroke={color} strokeLinecap="round" strokeWidth="2.5" />
+    <Svg
+      accessibilityElementsHidden
+      fill="none"
+      height={24}
+      stroke={color}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      width={24}>
+      <Rect height="16" rx="0.8" width="3.5" x="3" y="4" />
+      <Rect height="14" rx="0.8" width="3.5" x="8.5" y="6" />
+      <Path d="M14.2 6.8l3.3-.9 3.6 13.3-3.3.9z" />
     </Svg>
   );
 }

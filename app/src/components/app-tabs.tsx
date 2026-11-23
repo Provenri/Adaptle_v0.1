@@ -9,7 +9,7 @@ import {
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 import { TabLibraryIcon, TabPlayIcon } from './tab-icons';
 import { ThemedText } from './themed-text';
@@ -33,11 +33,11 @@ export default function AppTabs() {
 }
 
 type TabButtonProps = TabTriggerSlotProps & {
-  icon: (props: { color: string }) => React.ReactNode;
+  icon: (props: { color: string; active?: boolean }) => React.ReactNode;
 };
 
 export function TabButton({ children, icon: Icon, isFocused, ...props }: TabButtonProps) {
-  const color = isFocused ? '#173E32' : Colors.light.text;
+  const color = isFocused ? '#FFFFFF' : '#163C32';
   return (
     <Pressable
       accessibilityLabel={typeof children === 'string' ? children : undefined}
@@ -48,7 +48,7 @@ export function TabButton({ children, icon: Icon, isFocused, ...props }: TabButt
         pressed && styles.pressed,
       ]}>
       <View style={styles.tabButtonContent}>
-        <Icon color={color} />
+        <Icon color={color} active={isFocused} />
         <ThemedText style={[styles.tabLabel, { color }]}>{children}</ThemedText>
       </View>
     </Pressable>
@@ -88,10 +88,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   tabButton: {
-    backgroundColor: '#F8F4EE',
-    borderColor: '#D8DED9',
+    backgroundColor: '#FFFFFF',
     borderRadius: 999,
-    borderWidth: 1,
     flex: 1,
     maxWidth: 190,
     shadowColor: '#173E32',
@@ -101,9 +99,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   tabButtonSelected: {
-    backgroundColor: '#F8F4EE',
-    borderColor: '#173E32',
-    borderWidth: 4,
+    backgroundColor: '#163C32',
+    borderWidth: 0,
   },
   tabButtonContent: {
     alignItems: 'center',
