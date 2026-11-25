@@ -4,7 +4,6 @@ import {
   useCameraPermissions,
   type PermissionResponse,
 } from 'expo-camera';
-import { Image } from 'expo-image';
 import { Link, type Href } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -19,13 +18,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { TypographicCover } from '@/components/typographic-cover';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { OpenBookArchAppIcon } from '@/components/OpenBookArchAppIcon';
+import { TabFindIcon } from '@/components/tab-icons';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { APP_ICON } from '@/assets';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
 import {
   findExistingLibraryMatch,
@@ -42,12 +41,21 @@ import { AdaptationPractice } from '@/components/adaptation-practice';
 
 type ShelfFilter = ShelfStatus | 'ALL';
 
-export default function LibraryScreen() {
+type LibraryScreenProps = {
+  initialAddBookOpen?: boolean;
+  onAddBookClose?: () => void;
+};
+
+export default function LibraryScreen({
+  initialAddBookOpen = false,
+  onAddBookClose,
+}: LibraryScreenProps = {}) {
   const { books, isLibraryLoading, libraryError, removeBook, saveBook, updateStatus } =
     useLibrary();
   const [filter, setFilter] = useState<ShelfFilter>('ALL');
   const [query, setQuery] = useState('');
-  const [addBookOpen, setAddBookOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [addBookOpen, setAddBookOpen] = useState(initialAddBookOpen);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [practiceBook, setPracticeBook] = useState<{
     isbn13: string;
@@ -72,13 +80,19 @@ export default function LibraryScreen() {
     );
   }, [books, filter, query]);
 
+  const closeAddBook = () => {
+    setAddBookOpen(false);
+    onAddBookClose?.();
+  };
+
   const addBook = (candidate: BookCandidate) => {
     const existing = findExistingLibraryMatch(books, candidate);
     const finishAdding = () => {
-      setAddBookOpen(false);
+      closeAddBook();
       setFilter('ALL');
       setQuery('');
     };
+
     if (existing) {
       if (!existing.tmdbId && !existing.movieTitle && (candidate.tmdbId || candidate.movieTitle)) {
         Alert.alert(
@@ -120,97 +134,81 @@ export default function LibraryScreen() {
           showsVerticalScrollIndicator={false}>
           <View style={styles.headingRow}>
             <View style={styles.brandRow}>
-              <Image
-                accessibilityLabel="Adaptle"
-                contentFit="contain"
-                source={APP_ICON}
-                style={styles.headerLogo}
-              />
+              <OpenBookArchAppIcon size={56} />
               <View style={styles.headingCopy}>
-                <ThemedText type="smallBold" style={styles.eyebrow}>
-                  YOUR SHELF
-                </ThemedText>
+                <View style={styles.headingEyebrowRow}>
+                  <ThemedText type="smallBold" style={styles.eyebrow}>
+                    YOUR SHELF
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.playableCount}>
+                    {books.filter((book) => book.movieTitle).length} playable
+                  </ThemedText>
+                </View>
                 <ThemedText type="subtitle" style={styles.title}>
                   My Library
                 </ThemedText>
               </View>
             </View>
             <Pressable
-              accessibilityLabel="+ Add Book"
+              accessibilityLabel={searchOpen ? 'Close search my library' : 'Search my library'}
               accessibilityRole="button"
-              onPress={() => setAddBookOpen(true)}
-              style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
-              <Svg
-                accessibilityLabel="Add Book"
-                fill="none"
-                height={32}
-                stroke="#163C32"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.8}
-                viewBox="0 0 24 24"
-                width={32}>
-                <Path
-                  d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H18v19H6.5a2.5 2.5 0 0 1 0-5H18"
-                  fill="#FFFFFF"
-                />
-                <Rect fill="#FFFFFF" height="3" rx="0.8" width="6" x="8.5" y="6" />
-                <Circle
-                  cx="17.5"
-                  cy="17.5"
-                  fill="#FFFFFF"
-                  r="4.5"
-                  stroke="#163C32"
-                  strokeWidth="1.8"
-                />
-                <Path d="M17.5 15.5v4M15.5 17.5h4" />
-              </Svg>
+              accessibilityState={{ expanded: searchOpen }}
+              onPress={() => {
+                setSearchOpen((open) => !open);
+                if (searchOpen) setQuery('');
+              }}
+              style={({ pressed }) => [styles.librarySearchButton, pressed && styles.pressed]}>
+              <TabFindIcon color="#163C32" size={28} />
             </Pressable>
           </View>
 
-          <View style={styles.shelfOverview}>
-            <View style={styles.shelfOverviewHeading}>
-              <ThemedText type="smallBold" style={styles.shelfOverviewLabel}>
-                Shelf overview
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {books.filter((book) => book.movieTitle).length} playable
-              </ThemedText>
-            </View>
-            <View style={styles.filters}>
+          <View style={styles.filters}>
+            <ShelfFilterButton
+              count={books.length}
+              label="All"
+              selected={filter === 'ALL'}
+              onPress={() => setFilter('ALL')}
+            />
+            {(Object.keys(SHELF_LABELS) as ShelfStatus[]).map((status) => (
               <ShelfFilterButton
-                count={books.length}
-                label="All"
-                selected={filter === 'ALL'}
-                onPress={() => setFilter('ALL')}
+                count={counts[status]}
+                key={status}
+                label={
+                  status === 'TO_BE_READ'
+                    ? 'To read'
+                    : status === 'READING'
+                      ? 'Reading'
+                      : 'Finished'
+                }
+                selected={filter === status}
+                onPress={() => setFilter(status)}
               />
-              {(Object.keys(SHELF_LABELS) as ShelfStatus[]).map((status) => (
-                <ShelfFilterButton
-                  count={counts[status]}
-                  key={status}
-                  label={
-                    status === 'TO_BE_READ'
-                      ? 'To read'
-                      : status === 'READING'
-                        ? 'Reading'
-                        : 'Finished'
-                  }
-
-                  selected={filter === status}
-                  onPress={() => setFilter(status)}
-                />
-              ))}
-            </View>
+            ))}
           </View>
 
-          <TextInput
-            accessibilityLabel="Search my shelf"
-            onChangeText={setQuery}
-            placeholder="Search my shelf…"
-            placeholderTextColor="#737B78"
-            style={styles.searchInput}
-            value={query}
-          />
+          {searchOpen ? (
+            <View style={styles.shelfSearchRow}>
+              <TextInput
+                accessibilityLabel="Search my library"
+                autoFocus
+                onChangeText={setQuery}
+                placeholder="Search my shelf…"
+                placeholderTextColor="#60646C"
+                style={[styles.searchInput, styles.shelfSearchInput]}
+                value={query}
+              />
+              <Pressable
+                accessibilityLabel="Clear and close shelf search"
+                accessibilityRole="button"
+                onPress={() => {
+                  setQuery('');
+                  setSearchOpen(false);
+                }}
+                style={styles.shelfSearchClose}>
+                <ThemedText type="subtitle">×</ThemedText>
+              </Pressable>
+            </View>
+          ) : null}
 
           {isLibraryLoading && books.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
@@ -258,7 +256,7 @@ export default function LibraryScreen() {
               ))}
             </View>
           ) : (
-            <EmptyShelf query={query} onAdd={() => setAddBookOpen(true)} />
+            <EmptyShelf query={query} />
           )}
           <View style={styles.legalLinks}>
             <Link href={'/impressum' as Href} style={styles.legalLink}>
@@ -282,7 +280,7 @@ export default function LibraryScreen() {
           </View>
         </ScrollView>
 
-        <AddBookModal onAdd={addBook} onClose={() => setAddBookOpen(false)} visible={addBookOpen} />
+        <AddBookModal onAdd={addBook} onClose={closeAddBook} visible={addBookOpen} />
         <Modal
           animationType="slide"
           onRequestClose={() => setPrivacyOpen(false)}
@@ -464,7 +462,7 @@ function LibraryBookCard({
   );
 }
 
-function EmptyShelf({ query, onAdd }: { query: string; onAdd: () => void }) {
+function EmptyShelf({ query }: { query: string }) {
   return (
     <View style={styles.emptyState}>
       <ThemedText style={styles.emptyIcon}>📚 + 🎬</ThemedText>
@@ -473,14 +471,9 @@ function EmptyShelf({ query, onAdd }: { query: string; onAdd: () => void }) {
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
         {query
-          ? 'Try another title or author, or add a book manually.'
-          : 'Play today’s puzzle to discover books and save your favorites in one tap.'}
+          ? 'Try another title or author, or use Find to add a book.'
+          : 'Use Find to search or scan a book, or save favorites while playing the daily puzzle.'}
       </ThemedText>
-      <Pressable accessibilityRole="button" onPress={onAdd} style={styles.emptyButton}>
-        <ThemedText type="smallBold" style={styles.lightText}>
-          Search or scan a book
-        </ThemedText>
-      </Pressable>
     </View>
   );
 }
@@ -604,7 +597,11 @@ function AddBookModal({
                   </ThemedText>
                   <ThemedText type="subtitle">Add a book</ThemedText>
                 </View>
-                <Pressable accessibilityRole="button" onPress={onClose} style={styles.closeButton}>
+                <Pressable
+                  accessibilityLabel="Close Add Book"
+                  accessibilityRole="button"
+                  onPress={onClose}
+                  style={styles.closeButton}>
                   <ThemedText type="subtitle">×</ThemedText>
                 </Pressable>
               </View>
@@ -614,7 +611,7 @@ function AddBookModal({
                   autoFocus
                   onChangeText={setQuery}
                   placeholder="Title, author, or ISBN…"
-                  placeholderTextColor="#737B78"
+                  placeholderTextColor="#60646C"
                   returnKeyType="search"
                   onSubmitEditing={submitSearch}
                   style={[styles.searchInput, styles.modalSearchInput]}
@@ -793,14 +790,16 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexShrink: 1,
   },
-  headerLogo: {
-    borderRadius: 14,
-    height: 56,
-    width: 56,
+  headingEyebrowRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
   },
   eyebrow: { color: '#117579', letterSpacing: 1.4 },
+  playableCount: { fontSize: 12, lineHeight: 16 },
   title: { marginTop: Spacing.half },
-  addButton: {
+  librarySearchButton: {
     alignItems: 'center',
     borderRadius: 22,
     flexShrink: 0,
@@ -811,26 +810,10 @@ const styles = StyleSheet.create({
   },
   filters: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D9DFDB',
-    borderRadius: 12,
-    borderWidth: 1,
     flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  shelfOverview: {
-    backgroundColor: '#F4EEE6',
-    borderRadius: 16,
     gap: Spacing.two,
     marginTop: -Spacing.one,
-    padding: Spacing.three,
   },
-  shelfOverviewHeading: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  shelfOverviewLabel: { color: '#173E32' },
   adaptationToggle: {
     alignItems: 'center',
     alignSelf: 'flex-start',
@@ -869,15 +852,17 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     alignItems: 'center',
-    borderRightColor: '#E3E7E4',
-    borderRightWidth: 1,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D9DFDB',
+    borderRadius: 999,
+    borderWidth: 1,
     flex: 1,
     minHeight: 48,
     justifyContent: 'center',
     paddingHorizontal: Spacing.one,
     paddingVertical: Spacing.one,
   },
-  filterButtonSelected: { backgroundColor: '#173E32', borderRightColor: '#173E32' },
+  filterButtonSelected: { backgroundColor: '#173E32', borderColor: '#173E32' },
   filterButtonText: { color: '#173E32', fontSize: 13, lineHeight: 16, textAlign: 'center' },
   filterButtonSelectedText: {
     color: '#FFFFFF',
@@ -903,6 +888,14 @@ const styles = StyleSheet.create({
     color: '#1B2924',
     fontSize: 16,
     padding: Spacing.three,
+  },
+  shelfSearchRow: { alignItems: 'center', flexDirection: 'row', gap: Spacing.two },
+  shelfSearchInput: { flex: 1 },
+  shelfSearchClose: {
+    alignItems: 'center',
+    height: 48,
+    justifyContent: 'center',
+    width: 40,
   },
   bookList: { gap: Spacing.three },
   bookCard: {
@@ -967,12 +960,6 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.six },
   emptyIcon: { fontSize: 48, lineHeight: 58 },
   centered: { textAlign: 'center' },
-  emptyButton: {
-    backgroundColor: '#173E32',
-    borderRadius: 999,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
   modalRoot: { flex: 1 },
   modalSafeArea: { flex: 1 },
   modalContent: {

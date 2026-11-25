@@ -6,12 +6,13 @@ import {
   TabTrigger,
   TabTriggerSlotProps,
 } from 'expo-router/ui';
+import { type Href } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
-import { TabLibraryIcon, TabPlayIcon } from './tab-icons';
+import { TabFindIcon, TabLibraryIcon, TabPlayIcon } from './tab-icons';
 import { ThemedText } from './themed-text';
 
 export default function AppTabs() {
@@ -25,6 +26,9 @@ export default function AppTabs() {
           </TabTrigger>
           <TabTrigger name="library" href="/library" asChild>
             <TabButton icon={TabLibraryIcon}>My Library</TabButton>
+          </TabTrigger>
+          <TabTrigger name="find" href={'/find' as Href} asChild>
+            <TabButton icon={TabFindIcon}>Find</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -44,6 +48,7 @@ export function TabButton({ children, icon: Icon, isFocused, ...props }: TabButt
       {...(props as React.ComponentProps<typeof Pressable>)}
       style={({ pressed }) => [
         styles.tabButton,
+        children === 'My Library' && styles.libraryTabButton,
         isFocused && styles.tabButtonSelected,
         pressed && styles.pressed,
       ]}>
@@ -73,31 +78,34 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: 'row',
     left: 0,
+    paddingHorizontal: Spacing.three,
     position: 'absolute',
     right: 0,
     pointerEvents: 'box-none',
   },
   innerContainer: {
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: Spacing.three,
-    justifyContent: 'center',
-    maxWidth: MaxContentWidth,
-    paddingBottom: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    width: '100%',
-  },
-  tabButton: {
     backgroundColor: '#FFFFFF',
+    borderColor: '#D9DFDB',
     borderRadius: 999,
-    flex: 1,
-    maxWidth: 190,
+    borderWidth: 1,
+    elevation: 8,
+    flexDirection: 'row',
+    gap: Spacing.one,
+    justifyContent: 'center',
+    maxWidth: 480,
+    padding: Spacing.two,
     shadowColor: '#173E32',
     shadowOffset: { height: 4, width: 0 },
     shadowOpacity: 0.16,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 12,
+    width: '100%',
   },
+  tabButton: {
+    borderRadius: 999,
+    flex: 1,
+  },
+  libraryTabButton: { flex: 1.2 },
   tabButtonSelected: {
     backgroundColor: '#163C32',
     borderWidth: 0,
@@ -108,7 +116,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     justifyContent: 'center',
     minHeight: 48,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
   },
   tabLabel: { fontSize: 14, fontWeight: '700', lineHeight: 18 },
   pressed: { opacity: 0.65 },

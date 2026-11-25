@@ -76,3 +76,28 @@ export function TabLibraryIcon({ color, active = false }: { color: string; activ
     </Svg>
   );
 }
+
+export function TabFindIcon({
+  color,
+  size = 22,
+}: {
+  color: string;
+  active?: boolean;
+  size?: number;
+}) {
+  return (
+    <Svg
+      accessibilityElementsHidden
+      fill="none"
+      height={size}
+      stroke={color}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      width={size}>
+      <Circle cx="10.5" cy="10.5" r="6.5" />
+      <Path d="m15.5 15.5 5 5" />
+    </Svg>
+  );
+}

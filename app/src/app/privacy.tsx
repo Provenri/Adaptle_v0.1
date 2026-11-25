@@ -1,13 +1,12 @@
 import { Link, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image } from 'expo-image';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { OpenBookArchAppIcon } from '@/components/OpenBookArchAppIcon';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { APP_ICON } from '@/assets';
 import { getSupabaseClient, initializeAnonymousSession } from '@/lib/supabase';
 import { LEGAL_CONFIG } from '@/lib/legal';
 
@@ -59,12 +58,7 @@ export function PrivacyPolicyContent({ onBack }: { onBack: () => void }) {
           </Pressable>
 
           <View style={styles.brandRow}>
-            <Image
-              accessibilityLabel="Adaptle"
-              contentFit="contain"
-              source={APP_ICON}
-              style={styles.headerLogo}
-            />
+            <OpenBookArchAppIcon size={52} />
             <View>
               <ThemedText type="subtitle">Privacy Policy</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
@@ -289,11 +283,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: Spacing.three,
-  },
-  headerLogo: {
-    borderRadius: 12,
-    height: 52,
-    width: 52,
   },
   section: { gap: Spacing.two },
   sectionTitle: {

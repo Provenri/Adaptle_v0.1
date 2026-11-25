@@ -16,9 +16,9 @@ import { StoryPremise } from '@/components/story-premise';
 import { PremiseQuestion } from '@/components/premise-question';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TabPlayIcon } from '@/components/tab-icons';
+import { OpenBookArchAppIcon } from '@/components/OpenBookArchAppIcon';
+import { OpenBookArchLogo } from '@/components/OpenBookArchLogo';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { APP_ICON } from '@/assets';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
 import type { BonusItem, DailyRoundDetails, ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import {
@@ -111,12 +111,7 @@ function WelcomeScreen({
     <ThemedView style={styles.root}>
       <SafeAreaView style={styles.welcomeSafeArea}>
         <View style={styles.welcomeCard}>
-          <Image
-            accessibilityLabel="Adaptle"
-            contentFit="contain"
-            source={APP_ICON}
-            style={styles.welcomeLogo}
-          />
+          <OpenBookArchLogo size={88} />
           <ThemedText type="smallBold" style={styles.welcomeEyebrow}>
             {firstVisit ? 'WELCOME TO ADAPTLE' : 'WELCOME BACK'}
           </ThemedText>
@@ -128,11 +123,6 @@ function WelcomeScreen({
               ? `${completedScore.totalPoints} / 18 points · ${streak}-day streak`
               : '5 adaptations. 1 common thread. 18 points to play for.'}
           </ThemedText>
-          {!completedScore ? (
-            <View style={styles.welcomePlayMark}>
-              <TabPlayIcon color="#173E32" large />
-            </View>
-          ) : null}
           <PrimaryButton
             label={completedScore ? "View today's results" : 'Play today’s puzzle'}
             onPress={onContinue}
@@ -271,12 +261,7 @@ function DailyGame({
           testID="play-scroll-view">
           <View style={styles.headingRow}>
             <View style={styles.brandRow}>
-              <Image
-                accessibilityLabel="Adaptle"
-                contentFit="contain"
-                source={APP_ICON}
-                style={styles.headerLogo}
-              />
+              <OpenBookArchAppIcon size={56} />
               <View style={styles.headingCopy}>
                 <ThemedText type="smallBold" style={styles.eyebrow}>
                   ADAPTLE #{dailyPuzzle.id}
@@ -436,7 +421,10 @@ function RoundProgress({
 
   return (
     <View
-      accessibilityLabel={`Round progress: ${Math.min(roundIndex + 1, roundCount)} of ${roundCount} main rounds`}
+      accessibilityLabel={`Round progress: ${Math.min(roundIndex + 1, roundCount)} of ${roundCount} main rounds, ${
+        availablePoints > 0 ? `${availablePoints} points available` : label.toLowerCase()
+      }`}
+      accessibilityRole="progressbar"
       style={styles.roundProgress}>
       <View style={styles.roundSteps}>
         {Array.from({ length: roundCount }, (_, index) => {
@@ -456,20 +444,17 @@ function RoundProgress({
                 completed && styles.roundStepCompleted,
                 active && styles.roundStepActive,
               ]}>
-              <ThemedText type="smallBold" style={styles.roundStepText}>
+              <ThemedText
+                type="smallBold"
+                style={[
+                  styles.roundStepText,
+                  (completed || active) && styles.roundStepTextHighlighted,
+                ]}>
                 {completed ? '✓' : index + 1}
               </ThemedText>
             </View>
           );
         })}
-      </View>
-      <View style={styles.progressSummary}>
-        <ThemedText type="smallBold" style={styles.progressLabel}>
-          {label}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {availablePoints > 0 ? `${availablePoints} pts available` : 'All six rounds finished'}
-        </ThemedText>
       </View>
     </View>
   );
@@ -802,12 +787,7 @@ function SummaryView({
       <ViewShot ref={scoreCard} options={{ format: 'png', quality: 1 }}>
         <View style={styles.shareCard} testID="daily-score-card">
           <View style={styles.shareBrandRow}>
-            <Image
-              accessibilityLabel="Adaptle"
-              contentFit="contain"
-              source={APP_ICON}
-              style={styles.shareLogo}
-            />
+            <OpenBookArchAppIcon size={34} />
             <ThemedText type="smallBold" style={styles.shareBrand}>
               ADAPTLE · {formatPuzzleDate(puzzleDate)}
             </ThemedText>
@@ -918,11 +898,6 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     padding: Spacing.five,
   },
-  welcomeLogo: {
-    borderRadius: 20,
-    height: 88,
-    width: 88,
-  },
   welcomeEyebrow: {
     color: '#117579',
     letterSpacing: 1.5,
@@ -934,11 +909,6 @@ const styles = StyleSheet.create({
     color: '#173E32',
     fontWeight: '700',
     textAlign: 'center',
-  },
-  welcomePlayMark: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.one,
   },
   instructions: { alignItems: 'center', gap: Spacing.one, width: '100%' },
   instructionsToggle: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
@@ -984,11 +954,6 @@ const styles = StyleSheet.create({
   headingCopy: {
     marginTop: -Spacing.half,
   },
-  headerLogo: {
-    borderRadius: 14,
-    height: 56,
-    width: 56,
-  },
   eyebrow: {
     color: '#117579',
     letterSpacing: 1.4,
@@ -998,27 +963,30 @@ const styles = StyleSheet.create({
   },
   roundProgress: {
     alignItems: 'center',
-    backgroundColor: '#F4EEE6',
-    borderRadius: 16,
-    flexDirection: 'row',
-    gap: Spacing.three,
-    marginTop: -Spacing.one,
-    padding: Spacing.three,
+    marginTop: -Spacing.two,
   },
-  roundSteps: { alignItems: 'center', flexDirection: 'row', gap: Spacing.one },
+  roundSteps: {
+    alignItems: 'center',
+    backgroundColor: '#2F7D5D',
+    borderRadius: 999,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    maxWidth: 480,
+    padding: Spacing.two,
+    width: '100%',
+  },
   roundStep: {
     alignItems: 'center',
-    backgroundColor: '#E0D8CF',
+    backgroundColor: '#F8F4EE',
     borderRadius: 999,
-    height: 30,
+    height: 36,
     justifyContent: 'center',
-    width: 30,
+    width: 36,
   },
-  roundStepActive: { backgroundColor: '#117579' },
+  roundStepActive: { backgroundColor: '#173E32', borderColor: '#FFFFFF', borderWidth: 2 },
   roundStepCompleted: { backgroundColor: '#173E32' },
-  roundStepText: { color: '#FFFFFF', fontSize: 12 },
-  progressSummary: { flex: 1, gap: Spacing.half, minWidth: 0 },
-  progressLabel: { color: '#173E32' },
+  roundStepText: { color: '#60646C', fontSize: 13 },
+  roundStepTextHighlighted: { color: '#FFFFFF' },
   streak: {
     backgroundColor: '#FFF1D5',
     borderRadius: 999,
@@ -1278,11 +1246,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: Spacing.two,
-  },
-  shareLogo: {
-    borderRadius: 8,
-    height: 34,
-    width: 34,
   },
   shareScore: {
     color: '#FFF8E7',

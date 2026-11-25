@@ -132,17 +132,29 @@ components:
 
 ### Header
 
-- Use a 56×56 app icon with 14px corner radius.
+- Use the 56×56 dark-green rounded `OpenBookArchAppIcon` tile in Play and My Library headers.
+- Use the same tile at context-specific sizes elsewhere outside Welcome (52px in Privacy Policy and 34px in shared score artwork).
+- Default tile colors are `#143326` for the background and `#F5F2EB` for the glyph.
 - Pair the teal uppercase eyebrow with a 32/44 semibold title.
 - Keep header additions, such as streak or add-book controls, aligned to the existing component rather than introducing a top navigation bar.
 
+### Welcome mark
+
+- Use the themeable open-book arch SVG at 88×88 on the Welcome card.
+- Default mark color is `#143326`; keep the existing `Adaptle` accessibility label.
+- The Welcome mark remains transparent and is not used for page headers, score sharing, or platform launcher icons.
+- Keep the Welcome statement followed directly by the primary puzzle button; do not add a separate play/book icon between them.
+- Expo launcher, Android adaptive, and web favicon assets use the same rounded tile geometry and `#143326`/`#F5F2EB` palette. Splash artwork is managed separately.
+
 ### Bottom navigation
 
-- Exactly two tabs: `Play` and `My Library`.
-- Each tab is a 48px-minimum pill, maximum 190px wide, with 16px content padding and 8px icon gap.
+- Exactly three tabs: `Play`, `My Library`, and `Find`.
+- Tabs sit inside one elevated white floating capsule with a subtle warm-gray border and 8px inner padding.
+- Each tab is a 48px-minimum pill with 8px icon gap; `My Library` receives slightly more horizontal space.
 - Selected tab: `#163C32` with white icon/text.
-- Unselected tab: white with `#163C32` icon/text.
-- Shadow uses forest `#173E32`, 0.16 opacity, 4px vertical offset, 8px radius, and Android elevation 5.
+- Unselected tab: transparent within the white capsule with `#163C32` icon/text.
+- Capsule shadow uses forest `#173E32`, 0.16 opacity, 4px vertical offset, 12px radius, and Android elevation 8.
+- `Find` reuses the existing My Library screen and opens its Add Book modal immediately; closing it returns to My Library.
 
 ### Primary button
 
@@ -152,8 +164,8 @@ components:
 ### Puzzle question
 
 - Header: app icon, `ADAPTLE #<id>`, `Round <n> of 5`, and compact streak pill.
-- Progress: five 30px circles. Current is teal, completed is forest, inactive is `#E0D8CF`.
-- Progress copy uses the actual `getRoundPotential()` value: 3 points initially, 2 after one hint, 1 after two or three hints.
+- Progress: five 36px circles inside one full-width deep-green capsule. Current is forest with a white outline, completed is forest with a checkmark, and inactive is warm white.
+- Keep the round header as the visible round count; expose the actual `getRoundPotential()` value to assistive technology instead of repeating it beside the compact progress bar.
 - Paired works use two equal columns, a 16px gap, and 2:3 artwork at 8px radius.
 - Hint cards and answer cards use parchment `#F4EEE6`, 14px corners, and 16px padding.
 - Answer badges are 30px terracotta circles.
@@ -167,10 +179,11 @@ components:
 
 ### My Library
 
-- Header uses `YOUR SHELF` and `My Library`, with the existing add-book icon.
-- Shelf overview is a 16px-rounded muted parchment panel.
-- Filters are one 48px segmented row: All, To read, Reading, Finished. The selected filter is deep forest.
-- Search uses a muted parchment 14px-radius field.
+- Header uses `YOUR SHELF` and `My Library`, with a magnifying-glass action that reveals the shelf search field on demand.
+- `1 playable` sits beside the `YOUR SHELF` eyebrow.
+- Filters are four standalone 48px pill buttons: All, To read, Reading, Finished. The selected filter is deep forest; unselected pills are white with a subtle border.
+- Search is hidden by default and appears as a muted parchment 14px-radius field when the header magnifier is pressed.
+- Add Book belongs to the `Find` tab and its catalog modal, not the My Library header or empty state.
 - Book cards use warm parchment, 18px corners, 16px padding, a 92px typographic cover, status pill, and optional teal Play adaptation action.
 - Legal links are subtle footer links, not a separate navigation destination bar.
 

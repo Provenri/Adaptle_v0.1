@@ -58,6 +58,28 @@
       "title": "Adaptle - My Library",
       "deviceType": "MOBILE",
       "status": "ACCEPTED"
+    },
+    {
+      "id": "3139c867d365446fabbf16a3eae7e59a",
+      "title": "Adaptle - Welcome Current",
+      "deviceType": "MOBILE",
+      "status": "CURRENT",
+      "artifactPath": ".stitch/designs/welcome-current.png"
+    },
+    {
+      "id": "adbd78b5eb1540feadb7ad643c5fc1a8",
+      "title": "Adaptle - My Library Current",
+      "deviceType": "MOBILE",
+      "status": "CURRENT",
+      "artifactPath": ".stitch/designs/library-current.png"
+    },
+    {
+      "id": "e7a8a305ba1b445bb6772d1ad771e87d",
+      "title": "Adaptle - Round 1 Current",
+      "deviceType": "MOBILE",
+      "status": "REJECTED",
+      "reason": "Stitch substituted a gradient for the exact Blade Runner poster; asset upload approval was unavailable.",
+      "artifactPath": ".stitch/designs/round-1-current.png"
     }
   ]
 }

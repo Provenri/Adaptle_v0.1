@@ -4,6 +4,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 
 import PlayScreen from '@/app/index';
 import LibraryScreen from '@/app/library';
+import FindScreen from '@/app/find';
 import PrivacyPolicyScreen from '@/app/privacy';
 import ContactScreen from '@/app/contact';
 import ImpressumScreen, { ImpressumContent } from '@/app/impressum';
@@ -14,6 +15,8 @@ import * as dailyPuzzleModule from '@/lib/daily-puzzle';
 import { queryClient } from '@/lib/query-client';
 import { createScoreShareText } from '@/lib/score-sharing';
 import { AppDataProvider } from '@/providers/app-data-provider';
+
+const mockReplace = jest.fn();
 
 jest.mock('@/lib/local-storage', () => {
   const today = new Intl.DateTimeFormat('en-CA', {
@@ -74,7 +77,7 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({
     canGoBack: () => false,
     back: () => undefined,
-    replace: () => undefined,
+    replace: mockReplace,
   }),
 }));
 
@@ -157,10 +160,24 @@ async function renderScreen(element: ReactElement) {
 }
 
 describe('tab screens', () => {
+  it('opens book discovery from the Find tab and returns to the library on close', async () => {
+    const screen = await renderScreen(<FindScreen />);
+
+    expect(screen.getByText('Add a book')).toBeTruthy();
+    expect(screen.getByLabelText('Search book catalog')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Close Add Book' }));
+
+    expect(screen.queryByLabelText('Search book catalog')).toBeNull();
+    expect(mockReplace).toHaveBeenCalledWith('/library');
+  });
+
   it('renders the Play screen', async () => {
-    const { getAllByText, getByText, queryByText } = await renderScreen(<PlayScreen />);
+    const { getAllByText, getByLabelText, getByText, queryByText } = await renderScreen(
+      <PlayScreen />
+    );
     expect(getByText(/ADAPTLE/)).toBeTruthy();
-    expect(getByText('1 of 5 rounds')).toBeTruthy();
+    expect(getByLabelText('Round progress: 1 of 5 main rounds, 3 points available')).toBeTruthy();
     expect(queryByText(/Current round potential/)).toBeNull();
     expect(getByText("What is the story's one-line premise?")).toBeTruthy();
     expect(getByText('Source book')).toBeTruthy();
@@ -233,15 +250,16 @@ describe('tab screens', () => {
   it('renders the My Library screen', async () => {
     const screen = await renderScreen(<LibraryScreen />);
     expect(screen.queryByText('1 book saved · 1 screen adaptation')).toBeNull();
-    expect(screen.getByText('Shelf overview')).toBeTruthy();
+    expect(screen.queryByText('Shelf overview')).toBeNull();
     expect(screen.getByText('1 playable')).toBeTruthy();
     expect(screen.getByText('Do Androids Dream of Electric Sheep?')).toBeTruthy();
     expect(screen.getByText('🎬 Blade Runner (1982)')).toBeTruthy();
 
-    await fireEvent.changeText(screen.getByLabelText('Search my shelf'), 'missing');
+    await fireEvent.press(screen.getByRole('button', { name: 'Search my library' }));
+    await fireEvent.changeText(screen.getByLabelText('Search my library'), 'missing');
     expect(screen.getByText('No matching books')).toBeTruthy();
 
-    await fireEvent.changeText(screen.getByLabelText('Search my shelf'), '');
+    await fireEvent.changeText(screen.getByLabelText('Search my library'), '');
     await fireEvent.press(screen.getByRole('button', { name: 'All 1' }));
     await fireEvent.press(
       screen.getByRole('button', {
@@ -292,8 +310,7 @@ describe('tab screens', () => {
   });
 
   it('adds a book from search results', async () => {
-    const screen = await renderScreen(<LibraryScreen />);
-    await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
+    const screen = await renderScreen(<FindScreen />);
     await fireEvent.changeText(screen.getByLabelText('Search book catalog'), 'Project Hail Mary');
     await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
     expect(await screen.findByText('Andy Weir · 2021')).toBeTruthy();
@@ -305,12 +322,7 @@ describe('tab screens', () => {
   });
 
   it('filters the library to books with adaptations', async () => {
-    const screen = await renderScreen(<LibraryScreen />);
-    await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
-    await fireEvent.changeText(screen.getByLabelText('Search book catalog'), 'Project Hail Mary');
-    await fireEvent.press(await screen.findByText('Project Hail Mary'));
-
-    await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
+    const screen = await renderScreen(<FindScreen />);
     await fireEvent.changeText(screen.getByLabelText('Search book catalog'), 'Dune');
     await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
     await fireEvent.press(
@@ -329,8 +341,7 @@ describe('tab screens', () => {
   });
 
   it('shows a surprise adaptation candidate without search input', async () => {
-    const screen = await renderScreen(<LibraryScreen />);
-    await fireEvent.press(screen.getByRole('button', { name: '+ Add Book' }));
+    const screen = await renderScreen(<FindScreen />);
     await fireEvent.press(screen.getByRole('switch', { name: 'Show popular books only' }));
     await fireEvent.press(screen.getByRole('button', { name: /Surprise me/ }));
 
@@ -416,4 +427,5 @@ describe('score sharing', () => {
 
 afterEach(() => {
   queryClient.clear();
+  mockReplace.mockClear();
 });
