@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { isImpressumComplete, LEGAL_CONFIG } from '@/lib/legal';
+import { isImpressumComplete, LEGAL_CONFIG, type LegalConfig } from '@/lib/legal';
 
 export default function ImpressumScreen() {
   const router = useRouter();
@@ -16,8 +16,14 @@ export default function ImpressumScreen() {
   );
 }
 
-export function ImpressumContent({ onBack }: { onBack: () => void }) {
-  const complete = isImpressumComplete();
+export function ImpressumContent({
+  onBack,
+  config = LEGAL_CONFIG,
+}: {
+  onBack: () => void;
+  config?: LegalConfig;
+}) {
+  const complete = isImpressumComplete(config);
   return (
     <ThemedView style={styles.root}>
       <SafeAreaView style={styles.safeArea}>
@@ -33,40 +39,52 @@ export function ImpressumContent({ onBack }: { onBack: () => void }) {
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 Adaptle must not publish this page as a completed Impressum until the
-                operator&apos;s real name, serviceable postal address, immediate contact route, and
-                applicable entity details are configured.
+                operator&apos;s real name, serviceable postal address, and public email are
+                configured.
               </ThemedText>
             </View>
           ) : null}
 
           <LegalSection title="Angaben gemäß § 5 DDG">
-            <ThemedText type="small">{LEGAL_CONFIG.operatorName || 'Not configured'}</ThemedText>
-            <ThemedText type="small">{LEGAL_CONFIG.postalAddress || 'Not configured'}</ThemedText>
+            {config.operatorName ? (
+              <ThemedText type="small">{config.operatorName}</ThemedText>
+            ) : null}
+            {config.postalAddress ? (
+              <ThemedText style={styles.preserveLines} type="small">
+                {config.postalAddress}
+              </ThemedText>
+            ) : null}
           </LegalSection>
           <LegalSection title="Kontakt">
             <ThemedText type="small">
               E-Mail:{' '}
-              <Link href={`mailto:${LEGAL_CONFIG.contactEmail}`} style={styles.link}>
-                {LEGAL_CONFIG.contactEmail}
+              <Link href={`mailto:${config.contactEmail}`} style={styles.link}>
+                {config.contactEmail}
               </Link>
             </ThemedText>
-            <ThemedText type="small">
-              Direktkontakt: {LEGAL_CONFIG.directContact || 'Not configured'}
-            </ThemedText>
+            {config.directContact ? (
+              <ThemedText style={styles.preserveLines} type="small">
+                Direktkontakt: {config.directContact}
+              </ThemedText>
+            ) : null}
             <Link href={'/contact' as Href} style={styles.link}>
               <ThemedText type="small" style={styles.link}>
-                Kontaktformular
+                Kontaktformular (direkter Kontakt)
               </ThemedText>
             </Link>
           </LegalSection>
-          {LEGAL_CONFIG.entityDetails ? (
+          {config.entityDetails ? (
             <LegalSection title="Weitere Angaben">
-              <ThemedText type="small">{LEGAL_CONFIG.entityDetails}</ThemedText>
+              <ThemedText style={styles.preserveLines} type="small">
+                {config.entityDetails}
+              </ThemedText>
             </LegalSection>
           ) : null}
-          {LEGAL_CONFIG.responsiblePerson ? (
+          {config.responsiblePerson ? (
             <LegalSection title="Verantwortlich für den Inhalt">
-              <ThemedText type="small">{LEGAL_CONFIG.responsiblePerson}</ThemedText>
+              <ThemedText style={styles.preserveLines} type="small">
+                {config.responsiblePerson}
+              </ThemedText>
             </LegalSection>
           ) : null}
           <LegalSection title="Hinweis">
@@ -113,5 +131,6 @@ const styles = StyleSheet.create({
   noticeTitle: { color: '#8A4B16' },
   section: { gap: Spacing.one },
   sectionTitle: { color: '#173E32', fontSize: 17, lineHeight: 22 },
+  preserveLines: { lineHeight: 20 },
   link: { color: '#117579', textDecorationLine: 'underline' },
 });

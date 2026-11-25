@@ -39,7 +39,8 @@ Verify:
 - RLS still limits personal tables to the authenticated user.
 - The development-only replay control is absent from production behavior.
 - No service-role, OpenAI, or TMDB key is in the client bundle.
-- Do not publish `/impressum` until real operator name, serviceable postal address, email, direct contact route, and applicable entity/editorial details are configured. The placeholder warning must be absent in release.
+- Do not publish `/impressum` until the real operator name, serviceable postal address, public email, and working `/contact` route are configured and reviewed. Entity/editorial fields should be omitted when not applicable. The placeholder warning and all “Not configured” text must be absent in release.
+- Build and inspect the production web output locally before publishing the Impressum. Keep deployment approval separate from implementation, and confirm the rendered legal values with the operator.
 - Contact notifications require server-side `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, and `CONTACT_TO_EMAIL`; verify the sender domain and perform a real submission.
 - Verify anonymous users cannot read or write `contact_requests` directly.
 
@@ -49,9 +50,9 @@ The EAS production environment must contain only:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- Optional `EXPO_PUBLIC_IMPRESSUM_OPERATOR_NAME`
-- Optional `EXPO_PUBLIC_IMPRESSUM_POSTAL_ADDRESS`
-- Optional `EXPO_PUBLIC_IMPRESSUM_EMAIL`
+- `EXPO_PUBLIC_IMPRESSUM_OPERATOR_NAME` (required before publishing `/impressum`)
+- `EXPO_PUBLIC_IMPRESSUM_POSTAL_ADDRESS` (required before publishing `/impressum`)
+- Public `EXPO_PUBLIC_IMPRESSUM_EMAIL` (defaults to `adaptle.app@gmail.com`)
 - Optional `EXPO_PUBLIC_IMPRESSUM_DIRECT_CONTACT`
 - Optional `EXPO_PUBLIC_IMPRESSUM_ENTITY_DETAILS`
 - Optional `EXPO_PUBLIC_IMPRESSUM_RESPONSIBLE_PERSON`
@@ -76,6 +77,19 @@ Build Android:
 cd app
 npx eas-cli@latest build --profile production --platform android
 ```
+
+## Public Impressum
+
+- Production URL: `https://adaptle.expo.app/impressum`
+- The `/impressum` route must remain outside the Play/My Library tab navigator.
+- Required preview values are `EXPO_PUBLIC_IMPRESSUM_OPERATOR_NAME`,
+  `EXPO_PUBLIC_IMPRESSUM_POSTAL_ADDRESS`, and the public contact email. The built-in
+  `/contact` form is the configured direct-contact route.
+- Before deployment, run a production web export with the intended environment
+  and inspect the rendered page for exact operator details, no incomplete warning,
+  no placeholder text, a working contact form link, and a working privacy link.
+- After approval, redeploy the same web export used for preview and verify the
+  public URL returns HTTP 200 without redirecting after hydration.
 
 Optional Web verification:
 

@@ -6,7 +6,7 @@ import PlayScreen from '@/app/index';
 import LibraryScreen from '@/app/library';
 import PrivacyPolicyScreen from '@/app/privacy';
 import ContactScreen from '@/app/contact';
-import ImpressumScreen from '@/app/impressum';
+import ImpressumScreen, { ImpressumContent } from '@/app/impressum';
 import SharedPracticeScreen from '@/app/practice';
 import { bonusBooks, demoPuzzle, demoRoundDetails } from '@/test-fixtures/demo-puzzle';
 import type { ProductionDailyPuzzle } from '@/lib/daily-puzzle';
@@ -359,11 +359,11 @@ describe('tab screens', () => {
     const screen = await render(<PrivacyPolicyScreen />, { wrapper: AppDataProvider });
 
     expect(screen.getByText('Privacy Policy')).toBeTruthy();
-    expect(screen.getAllByText(/adaptle\.privacy@gmail\.com/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/adaptle\.app@gmail\.com/).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Request data deletion' })).toBeTruthy();
   });
 
-  it('shows contact and incomplete Impressum scaffolding', async () => {
+  it('shows contact and warns while the Impressum is incomplete', async () => {
     const contact = await render(<ContactScreen />, { wrapper: AppDataProvider });
     expect(contact.getByText('Contact Adaptle')).toBeTruthy();
     expect(contact.getByRole('button', { name: 'Send message' })).toBeTruthy();
@@ -371,6 +371,33 @@ describe('tab screens', () => {
     const impressum = await render(<ImpressumScreen />, { wrapper: AppDataProvider });
     expect(impressum.getByText('Impressum')).toBeTruthy();
     expect(impressum.getByText('Legal details configuration incomplete')).toBeTruthy();
+    expect(impressum.queryByText('Not configured')).toBeNull();
+  });
+
+  it('shows complete Impressum details and hides non-applicable sections', async () => {
+    const screen = await render(
+      <ImpressumContent
+        config={{
+          operatorName: 'Enri Prodani',
+          postalAddress:
+            'c/o POSTFLEX PFX-452-849\nEmsdettener Straße 10\n48268 Greven\nDeutschland',
+          contactEmail: 'adaptle.app@gmail.com',
+          directContact: '',
+          entityDetails: '',
+          responsiblePerson: '',
+        }}
+        onBack={jest.fn()}
+      />,
+      { wrapper: AppDataProvider }
+    );
+
+    expect(screen.getByText('Enri Prodani')).toBeTruthy();
+    expect(screen.getByText(/c\/o POSTFLEX PFX-452-849/)).toBeTruthy();
+    expect(screen.getAllByText(/adaptle\.app@gmail\.com/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Kontaktformular (direkter Kontakt)')).toBeTruthy();
+    expect(screen.queryByText('Legal details configuration incomplete')).toBeNull();
+    expect(screen.queryByText('Weitere Angaben')).toBeNull();
+    expect(screen.queryByText('Verantwortlich für den Inhalt')).toBeNull();
   });
 
   it('keeps direct shared practice links on a focused completion screen', async () => {

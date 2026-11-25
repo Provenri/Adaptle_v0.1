@@ -1,0 +1,63 @@
+{
+  "projectId": "17729392118786010278",
+  "title": "Adaptle",
+  "deviceType": "MOBILE",
+  "designDocument": "DESIGN.md",
+  "designSystems": [
+    {
+      "name": "assets/ec97a867c04749a8a5ac3774cb97e4e9",
+      "displayName": "Adaptle",
+      "status": "SOURCE_OF_TRUTH"
+    }
+  ],
+  "screens": [
+    {
+      "id": "798fa08b032242d18a2ae09806826b4b",
+      "title": "Adaptle - Welcome",
+      "deviceType": "MOBILE",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "058dd2d4cb514708ab620c080f576e99",
+      "title": "Adaptle - Round 1 Exact",
+      "deviceType": "MOBILE",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "377081ed2ae0494d9d3e85bea03b3d53",
+      "title": "Adaptle - Hint 1 Unlocked",
+      "deviceType": "MOBILE",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "15b795b6fca24659aac8bcfdb0f91ebb",
+      "title": "Adaptle - Hint 2 Unlocked",
+      "deviceType": "MOBILE",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "cb30df455bfb4444b885d21fc593e861",
+      "title": "Adaptle - Hint 3 Unlocked",
+      "deviceType": "MOBILE",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "3424f75a8c22480a9f3e4520f7065faa",
+      "title": "Adaptle - Correct Answer Reveal",
+      "deviceType": "MOBILE",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "bf0a6e6f2952408190313edcd34db72f",
+      "title": "Adaptle - Incorrect Answer Reveal",
+      "deviceType": "MOBILE",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "ef8e1d90948f49a99d5e85ad140795c5",
+      "title": "Adaptle - My Library",
+      "deviceType": "MOBILE",
+      "status": "ACCEPTED"
+    }
+  ]
+}
