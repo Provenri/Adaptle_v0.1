@@ -28,7 +28,6 @@ import {
   getRoundPotential,
   getTotalPoints,
   type DailyPuzzle,
-  type GamePhase,
 } from '@/lib/game-engine';
 import {
   createSavedLine,
@@ -185,26 +184,27 @@ function DailyGame({
         <SafeAreaView style={styles.safeArea}>
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.headingRow}>
-              <View>
-                <ThemedText type="smallBold" style={styles.eyebrow}>
-                  ADAPTLE · {formatPuzzleDate(completedScore.puzzleDate)}
+              <View style={styles.brandRow}>
+                <View style={styles.headerLogoSlot}>
+                  <OpenBookArchAppIcon
+                    accessibilityLabel="Adaptle Daily complete header"
+                    size={48}
+                  />
+                </View>
+                <ThemedText numberOfLines={1} style={styles.headerTitle} type="subtitle">
+                  Daily complete
                 </ThemedText>
-                <ThemedText type="subtitle">Daily complete</ThemedText>
               </View>
-              <Pressable
-                accessibilityLabel={`Current streak: ${currentStreak} days. Show streak details.`}
-                accessibilityRole="button"
-                onPress={() => setStreakDetailsOpen(true)}
-                style={styles.streak}>
-                <ThemedText type="smallBold">🔥 {currentStreak}</ThemedText>
-              </Pressable>
+              <View style={styles.headingAction}>
+                <Pressable
+                  accessibilityLabel={`Current streak: ${currentStreak} days. Show streak details.`}
+                  accessibilityRole="button"
+                  onPress={() => setStreakDetailsOpen(true)}
+                  style={styles.streak}>
+                  <ThemedText type="smallBold">🔥 {currentStreak}</ThemedText>
+                </Pressable>
+              </View>
             </View>
-            <RoundProgress
-              availablePoints={0}
-              phase="complete"
-              roundCount={enginePuzzle.rounds.length}
-              roundIndex={enginePuzzle.rounds.length - 1}
-            />
             <Modal
               animationType="fade"
               onRequestClose={() => setStreakDetailsOpen(false)}
@@ -261,34 +261,37 @@ function DailyGame({
           testID="play-scroll-view">
           <View style={styles.headingRow}>
             <View style={styles.brandRow}>
-              <OpenBookArchAppIcon size={56} />
-              <View style={styles.headingCopy}>
-                <ThemedText type="smallBold" style={styles.eyebrow}>
-                  ADAPTLE #{dailyPuzzle.id}
-                </ThemedText>
-                <ThemedText type="subtitle" style={styles.title}>
-                  {state.phase === 'bonus' || state.phase === 'bonus-reveal'
-                    ? 'Common Thread'
-                    : state.phase === 'complete'
-                      ? 'Daily complete'
-                      : `Round ${state.roundIndex + 1} of 5`}
-                </ThemedText>
+              <View style={styles.headerLogoSlot}>
+                <OpenBookArchAppIcon size={48} />
               </View>
+              <ThemedText
+                accessibilityLabel={
+                  state.phase === 'bonus' || state.phase === 'bonus-reveal'
+                    ? 'Common Thread bonus round'
+                    : `Round ${state.roundIndex + 1} of 5, ${getRoundPotential(
+                        state.hintsUsed
+                      )} points available`
+                }
+                numberOfLines={1}
+                style={styles.headerTitle}
+                type="subtitle">
+                {state.phase === 'bonus' || state.phase === 'bonus-reveal'
+                  ? 'Common Thread'
+                  : state.phase === 'complete'
+                    ? 'Daily complete'
+                    : `Round ${state.roundIndex + 1} of 5`}
+              </ThemedText>
             </View>
-            <Pressable
-              accessibilityLabel={`Current streak: ${currentStreak} days. Show streak details.`}
-              accessibilityRole="button"
-              onPress={() => setStreakDetailsOpen(true)}
-              style={styles.streak}>
-              <ThemedText type="smallBold">🔥 {currentStreak}</ThemedText>
-            </Pressable>
+            <View style={styles.headingAction}>
+              <Pressable
+                accessibilityLabel={`Current streak: ${currentStreak} days. Show streak details.`}
+                accessibilityRole="button"
+                onPress={() => setStreakDetailsOpen(true)}
+                style={styles.streak}>
+                <ThemedText type="smallBold">🔥 {currentStreak}</ThemedText>
+              </Pressable>
+            </View>
           </View>
-          <RoundProgress
-            availablePoints={getRoundPotential(state.hintsUsed)}
-            phase={state.phase}
-            roundCount={enginePuzzle.rounds.length}
-            roundIndex={state.roundIndex}
-          />
           <Modal
             animationType="fade"
             onRequestClose={() => setStreakDetailsOpen(false)}
@@ -315,6 +318,7 @@ function DailyGame({
             <PremiseQuestion
               details={details}
               hintsUsed={state.hintsUsed}
+              key={round.id}
               choices={round.choices}
               onHint={() => dispatch({ type: 'unlock-hint' })}
               onAnswer={(choiceId) => dispatch({ type: 'submit-answer', choiceId })}
@@ -396,67 +400,6 @@ function DailyGame({
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
-  );
-}
-
-function RoundProgress({
-  availablePoints,
-  phase,
-  roundCount,
-  roundIndex,
-}: {
-  availablePoints: number;
-  phase: GamePhase;
-  roundCount: number;
-  roundIndex: number;
-}) {
-  const currentRoundFinished =
-    phase === 'reveal' || phase === 'bonus' || phase === 'bonus-reveal' || phase === 'complete';
-  const label =
-    phase === 'complete'
-      ? 'Daily complete'
-      : phase === 'bonus' || phase === 'bonus-reveal'
-        ? 'Common Thread bonus'
-        : `${roundIndex + 1} of ${roundCount} rounds`;
-
-  return (
-    <View
-      accessibilityLabel={`Round progress: ${Math.min(roundIndex + 1, roundCount)} of ${roundCount} main rounds, ${
-        availablePoints > 0 ? `${availablePoints} points available` : label.toLowerCase()
-      }`}
-      accessibilityRole="progressbar"
-      style={styles.roundProgress}>
-      <View style={styles.roundSteps}>
-        {Array.from({ length: roundCount }, (_, index) => {
-          const completed =
-            phase === 'complete' ||
-            index < roundIndex ||
-            (index === roundIndex && currentRoundFinished);
-          const active = index === roundIndex && phase === 'question';
-          return (
-            <View
-              accessibilityLabel={`Round ${index + 1}${
-                completed ? ', completed' : active ? ', current' : ''
-              }`}
-              key={index}
-              style={[
-                styles.roundStep,
-                completed && styles.roundStepCompleted,
-                active && styles.roundStepActive,
-              ]}>
-              <ThemedText
-                type="smallBold"
-                style={[
-                  styles.roundStepText,
-                  (completed || active) && styles.roundStepTextHighlighted,
-                ]}>
-                {completed ? '✓' : index + 1}
-              </ThemedText>
-            </View>
-          );
-        })}
-      </View>
-    </View>
   );
 }
 
@@ -787,7 +730,11 @@ function SummaryView({
       <ViewShot ref={scoreCard} options={{ format: 'png', quality: 1 }}>
         <View style={styles.shareCard} testID="daily-score-card">
           <View style={styles.shareBrandRow}>
-            <OpenBookArchAppIcon size={34} />
+            <OpenBookArchAppIcon
+              backgroundColor="#FFF8E7"
+              glyphColor="#173E32"
+              size={34}
+            />
             <ThemedText type="smallBold" style={styles.shareBrand}>
               ADAPTLE · {formatPuzzleDate(puzzleDate)}
             </ThemedText>
@@ -942,56 +889,39 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.six,
   },
   headingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.two,
+    justifyContent: 'space-between',
+    width: '100%',
   },
   brandRow: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexDirection: 'row',
     gap: Spacing.two,
   },
-  headingCopy: {
-    marginTop: -Spacing.half,
+  headerTitle: {
+    fontSize: 24,
+    lineHeight: 32,
   },
-  eyebrow: {
-    color: '#117579',
-    letterSpacing: 1.4,
-  },
-  title: {
-    marginTop: Spacing.half,
-  },
-  roundProgress: {
+  headerLogoSlot: {
     alignItems: 'center',
-    marginTop: -Spacing.two,
-  },
-  roundSteps: {
-    alignItems: 'center',
-    backgroundColor: '#2F7D5D',
-    borderRadius: 999,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    maxWidth: 480,
-    padding: Spacing.two,
-    width: '100%',
-  },
-  roundStep: {
-    alignItems: 'center',
-    backgroundColor: '#F8F4EE',
-    borderRadius: 999,
-    height: 36,
+    height: 56,
     justifyContent: 'center',
-    width: 36,
+    width: 56,
   },
-  roundStepActive: { backgroundColor: '#173E32', borderColor: '#FFFFFF', borderWidth: 2 },
-  roundStepCompleted: { backgroundColor: '#173E32' },
-  roundStepText: { color: '#60646C', fontSize: 13 },
-  roundStepTextHighlighted: { color: '#FFFFFF' },
+  headingAction: {
+    alignItems: 'center',
+    flexShrink: 0,
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
+  },
   streak: {
     backgroundColor: '#FFF1D5',
     borderRadius: 999,
     color: '#74421B',
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two,
   },
   streakModalBackdrop: {

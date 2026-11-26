@@ -101,3 +101,38 @@ export function TabFindIcon({
     </Svg>
   );
 }
+
+export function GiftIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg
+      accessibilityElementsHidden
+      fill="none"
+      height={size}
+      stroke={color}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.8"
+      viewBox="0 0 24 24"
+      width={size}>
+      <Rect height="3" rx="1" width="18" x="3" y="9" />
+      <Path d="M5 12v8h14v-8M12 9v11" />
+      <Path d="M12 9H8.5A2.5 2.5 0 1 1 11 6.5L12 9ZM12 9h3.5A2.5 2.5 0 1 0 13 6.5L12 9Z" />
+    </Svg>
+  );
+}
+
+export function BarcodeIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg
+      accessibilityElementsHidden
+      fill="none"
+      height={size}
+      stroke={color}
+      strokeLinecap="round"
+      strokeWidth="1.8"
+      viewBox="0 0 24 24"
+      width={size}>
+      <Path d="M4 4v16M7 4v16M11 4v16M14 4v16M17 4v16M20 4v16" />
+    </Svg>
+  );
+}

@@ -136,6 +136,7 @@ export function AdaptationPractice({
       <PremiseQuestion
         details={details}
         hintsUsed={hintsUsed}
+        key={details.isbn13}
         choices={choices}
         onHint={() => setHintsUsed((used) => used + 1)}
         onAnswer={setSelected}

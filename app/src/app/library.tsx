@@ -23,11 +23,10 @@ import { TypographicCover } from '@/components/typographic-cover';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { OpenBookArchAppIcon } from '@/components/OpenBookArchAppIcon';
-import { TabFindIcon } from '@/components/tab-icons';
+import { BarcodeIcon, GiftIcon, TabFindIcon } from '@/components/tab-icons';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
 import {
-  findExistingLibraryMatch,
   hasPlayableAdaptation,
   SHELF_LABELS,
   type BookCandidate,
@@ -41,21 +40,11 @@ import { AdaptationPractice } from '@/components/adaptation-practice';
 
 type ShelfFilter = ShelfStatus | 'ALL';
 
-type LibraryScreenProps = {
-  initialAddBookOpen?: boolean;
-  onAddBookClose?: () => void;
-};
-
-export default function LibraryScreen({
-  initialAddBookOpen = false,
-  onAddBookClose,
-}: LibraryScreenProps = {}) {
-  const { books, isLibraryLoading, libraryError, removeBook, saveBook, updateStatus } =
-    useLibrary();
+export default function LibraryScreen() {
+  const { books, isLibraryLoading, libraryError, removeBook, updateStatus } = useLibrary();
   const [filter, setFilter] = useState<ShelfFilter>('ALL');
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
-  const [addBookOpen, setAddBookOpen] = useState(initialAddBookOpen);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [practiceBook, setPracticeBook] = useState<{
     isbn13: string;
@@ -80,51 +69,6 @@ export default function LibraryScreen({
     );
   }, [books, filter, query]);
 
-  const closeAddBook = () => {
-    setAddBookOpen(false);
-    onAddBookClose?.();
-  };
-
-  const addBook = (candidate: BookCandidate) => {
-    const existing = findExistingLibraryMatch(books, candidate);
-    const finishAdding = () => {
-      closeAddBook();
-      setFilter('ALL');
-      setQuery('');
-    };
-
-    if (existing) {
-      if (!existing.tmdbId && !existing.movieTitle && (candidate.tmdbId || candidate.movieTitle)) {
-        Alert.alert(
-          'Update saved book?',
-          `“${existing.title}” is already on your shelf without adaptation details. Replace that entry with the matching adapted edition?`,
-          [
-            { text: 'Keep existing', style: 'cancel' },
-            {
-              text: 'Update',
-              onPress: () => {
-                if (existing.isbn13 !== candidate.isbn13) removeBook(existing.isbn13);
-                saveBook(candidate, existing.status);
-                finishAdding();
-              },
-            },
-          ]
-        );
-        return;
-      }
-      Alert.alert(
-        'Already in your library',
-        `“${existing.title}” is already on your shelf as ${SHELF_LABELS[
-          existing.status
-        ].toLowerCase()}.`,
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-    saveBook(candidate);
-    finishAdding();
-  };
-
   return (
     <ThemedView style={styles.root}>
       <SafeAreaView style={styles.safeArea}>
@@ -134,32 +78,26 @@ export default function LibraryScreen({
           showsVerticalScrollIndicator={false}>
           <View style={styles.headingRow}>
             <View style={styles.brandRow}>
-              <OpenBookArchAppIcon size={56} />
-              <View style={styles.headingCopy}>
-                <View style={styles.headingEyebrowRow}>
-                  <ThemedText type="smallBold" style={styles.eyebrow}>
-                    YOUR SHELF
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.playableCount}>
-                    {books.filter((book) => book.movieTitle).length} playable
-                  </ThemedText>
-                </View>
-                <ThemedText type="subtitle" style={styles.title}>
-                  My Library
-                </ThemedText>
+              <View style={styles.headerLogoSlot}>
+                <OpenBookArchAppIcon size={48} />
               </View>
+              <ThemedText numberOfLines={1} style={styles.headerTitle} type="subtitle">
+                My Library
+              </ThemedText>
             </View>
-            <Pressable
-              accessibilityLabel={searchOpen ? 'Close search my library' : 'Search my library'}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: searchOpen }}
-              onPress={() => {
-                setSearchOpen((open) => !open);
-                if (searchOpen) setQuery('');
-              }}
-              style={({ pressed }) => [styles.librarySearchButton, pressed && styles.pressed]}>
-              <TabFindIcon color="#163C32" size={28} />
-            </Pressable>
+            <View style={styles.headingAction}>
+              <Pressable
+                accessibilityLabel={searchOpen ? 'Close search my library' : 'Search my library'}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: searchOpen }}
+                onPress={() => {
+                  setSearchOpen((open) => !open);
+                  if (searchOpen) setQuery('');
+                }}
+                style={({ pressed }) => [styles.librarySearchButton, pressed && styles.pressed]}>
+                <TabFindIcon color="#163C32" size={28} />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.filters}>
@@ -280,7 +218,6 @@ export default function LibraryScreen({
           </View>
         </ScrollView>
 
-        <AddBookModal onAdd={addBook} onClose={closeAddBook} visible={addBookOpen} />
         <Modal
           animationType="slide"
           onRequestClose={() => setPrivacyOpen(false)}
@@ -478,13 +415,11 @@ function EmptyShelf({ query }: { query: string }) {
   );
 }
 
-function AddBookModal({
-  visible,
-  onClose,
+export function AddBookContent({
+  isBookAdded = () => false,
   onAdd,
 }: {
-  visible: boolean;
-  onClose: () => void;
+  isBookAdded?: (candidate: BookCandidate) => boolean;
   onAdd: (candidate: BookCandidate) => void;
 }) {
   const [query, setQuery] = useState('');
@@ -500,7 +435,7 @@ function AddBookModal({
   const searchQuery = useQuery({
     queryKey: ['book-search', submittedQuery, adaptationsOnly, popularOnly, searchVersion],
     queryFn: () => searchBookCatalog(submittedQuery, adaptationsOnly, popularOnly),
-    enabled: visible && submittedQuery.length >= 2,
+    enabled: submittedQuery.length >= 2,
     staleTime: 5 * 60 * 1000,
   });
   const results = (surpriseBook ? [surpriseBook] : (searchQuery.data ?? []))
@@ -560,14 +495,9 @@ function AddBookModal({
   };
 
   return (
-    <Modal
-      animationType="slide"
-      onRequestClose={onClose}
-      presentationStyle="pageSheet"
-      visible={visible}>
-      <ThemedView style={styles.modalRoot}>
-        <SafeAreaView style={styles.modalSafeArea}>
-          {scanning ? (
+    <ThemedView style={styles.modalRoot}>
+      <SafeAreaView style={styles.modalSafeArea}>
+        {scanning ? (
             <View style={styles.cameraContainer}>
               <CameraView
                 barcodeScannerSettings={{ barcodeTypes: ['ean13'] }}
@@ -588,22 +518,18 @@ function AddBookModal({
                 </Pressable>
               </View>
             </View>
-          ) : (
+        ) : (
             <View style={styles.modalContent}>
-              <View style={styles.modalHeading}>
-                <View>
-                  <ThemedText type="smallBold" style={styles.eyebrow}>
-                    MANUAL SHELF ADD
+              <View style={styles.headingRow}>
+                <View style={styles.brandRow}>
+                  <View style={styles.headerLogoSlot}>
+                    <OpenBookArchAppIcon size={48} />
+                  </View>
+                  <ThemedText numberOfLines={1} style={styles.headerTitle} type="subtitle">
+                    Find a Book
                   </ThemedText>
-                  <ThemedText type="subtitle">Add a book</ThemedText>
                 </View>
-                <Pressable
-                  accessibilityLabel="Close Add Book"
-                  accessibilityRole="button"
-                  onPress={onClose}
-                  style={styles.closeButton}>
-                  <ThemedText type="subtitle">×</ThemedText>
-                </Pressable>
+                <View style={styles.headingAction} />
               </View>
               <View style={styles.searchRow}>
                 <TextInput
@@ -693,39 +619,47 @@ function AddBookModal({
                       : 'Book search failed.'}
                   </ThemedText>
                 ) : null}
-                {results.map((candidate) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    key={candidate.isbn13}
-                    onPress={() => onAdd(candidate)}
-                    style={({ pressed }) => [styles.resultCard, pressed && styles.pressed]}>
-                    <TypographicCover
-                      author={candidate.author}
-                      coverTheme={candidate.coverTheme}
-                      genre={candidate.genre}
-                      title={candidate.title}
-                      width={62}
-                    />
-                    <View style={styles.resultCopy}>
-                      <ThemedText type="smallBold">{candidate.title}</ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {candidate.author}
-                        {candidate.publicationYear ? ` · ${candidate.publicationYear}` : ''}
-                      </ThemedText>
-                      {candidate.hasAdaptation ? (
-                        <ThemedText
-                          numberOfLines={1}
-                          type="smallBold"
-                          style={styles.adaptationBadge}>
-                          🎬 Screen adaptation
+                {results.map((candidate) => {
+                  const added = isBookAdded(candidate);
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: added }}
+                      key={candidate.isbn13}
+                      onPress={() => {
+                        if (!added) onAdd(candidate);
+                      }}
+                      style={({ pressed }) => [styles.resultCard, pressed && styles.pressed]}>
+                      <TypographicCover
+                        author={candidate.author}
+                        coverTheme={candidate.coverTheme}
+                        genre={candidate.genre}
+                        title={candidate.title}
+                        width={62}
+                      />
+                      <View style={styles.resultCopy}>
+                        <ThemedText type="smallBold">{candidate.title}</ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {candidate.author}
+                          {candidate.publicationYear ? ` · ${candidate.publicationYear}` : ''}
                         </ThemedText>
-                      ) : null}
-                    </View>
-                    <ThemedText type="smallBold" style={styles.addResult}>
-                      + Add
-                    </ThemedText>
-                  </Pressable>
-                ))}
+                        {candidate.hasAdaptation ? (
+                          <ThemedText
+                            numberOfLines={1}
+                            type="smallBold"
+                            style={styles.adaptationBadge}>
+                            🎬 Screen adaptation
+                          </ThemedText>
+                        ) : null}
+                      </View>
+                      <ThemedText
+                        type="smallBold"
+                        style={[styles.addResult, added && styles.addResultAdded]}>
+                        {added ? 'Added' : '+ Add'}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
                 {!searchQuery.isFetching &&
                 !searchQuery.isError &&
                 submittedQuery.length >= 2 &&
@@ -735,31 +669,30 @@ function AddBookModal({
                   </ThemedText>
                 ) : null}
               </ScrollView>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void showSurpriseBook()}
-                style={({ pressed }) => [styles.surpriseButton, pressed && styles.pressed]}>
-                {isSurprising ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <ThemedText type="smallBold" style={styles.lightText}>
-                    🎲 Surprise me
-                  </ThemedText>
-                )}
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={startScanning}
-                style={({ pressed }) => [styles.scanButton, pressed && styles.pressed]}>
-                <ThemedText type="smallBold" style={styles.lightText}>
-                  Scan ISBN barcode
-                </ThemedText>
-              </Pressable>
+              <View style={styles.floatingActions}>
+                <Pressable
+                  accessibilityLabel="Surprise me"
+                  accessibilityRole="button"
+                  onPress={() => void showSurpriseBook()}
+                  style={({ pressed }) => [styles.surpriseButton, pressed && styles.pressed]}>
+                  {isSurprising ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <GiftIcon color="#FFFFFF" size={26} />
+                  )}
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Scan ISBN barcode"
+                  accessibilityRole="button"
+                  onPress={startScanning}
+                  style={({ pressed }) => [styles.scanButton, pressed && styles.pressed]}>
+                  <BarcodeIcon color="#FFFFFF" size={26} />
+                </Pressable>
+              </View>
             </View>
-          )}
-        </SafeAreaView>
-      </ThemedView>
-    </Modal>
+        )}
+      </SafeAreaView>
+    </ThemedView>
   );
 }
 
@@ -776,37 +709,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.two,
     justifyContent: 'space-between',
+    width: '100%',
   },
   brandRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: Spacing.two,
-    flex: 1,
-    minWidth: 0,
-  },
-  headingCopy: {
-    flex: 1,
-    marginTop: -Spacing.half,
-    minWidth: 0,
-    flexShrink: 1,
-  },
-  headingEyebrowRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.two,
   },
-  eyebrow: { color: '#117579', letterSpacing: 1.4 },
-  playableCount: { fontSize: 12, lineHeight: 16 },
-  title: { marginTop: Spacing.half },
+  headerTitle: {
+    fontSize: 24,
+    lineHeight: 32,
+  },
+  headerLogoSlot: {
+    alignItems: 'center',
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
+  },
+  headingAction: {
+    alignItems: 'center',
+    flexShrink: 0,
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
+  },
   librarySearchButton: {
     alignItems: 'center',
     borderRadius: 22,
     flexShrink: 0,
-    height: 44,
+    height: 56,
     justifyContent: 'center',
-    transform: [{ translateY: 6 }],
-    width: 44,
+    width: 56,
   },
   filters: {
     alignItems: 'center',
@@ -966,6 +899,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.three,
     padding: Spacing.four,
+    paddingBottom: BottomTabInset + Spacing.three,
   },
   searchRow: {
     alignItems: 'center',
@@ -994,27 +928,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: Spacing.three,
   },
-  modalHeading: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  closeButton: { padding: Spacing.two },
   scanButton: {
     alignItems: 'center',
     backgroundColor: '#117579',
     borderRadius: 999,
-    padding: Spacing.three,
+    elevation: 8,
+    height: 56,
+    justifyContent: 'center',
+    shadowColor: '#173E32',
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    width: 56,
   },
   surpriseButton: {
     alignItems: 'center',
     backgroundColor: '#A84732',
     borderRadius: 999,
-    minHeight: 48,
+    elevation: 8,
+    height: 56,
     justifyContent: 'center',
-    padding: Spacing.three,
+    shadowColor: '#173E32',
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    width: 56,
   },
-  results: { gap: Spacing.three, paddingBottom: Spacing.six },
+  floatingActions: {
+    bottom: BottomTabInset + Spacing.three,
+    gap: Spacing.two,
+    position: 'absolute',
+    right: Spacing.three,
+  },
+  results: { gap: Spacing.three, paddingBottom: 152 },
   resultCard: {
     alignItems: 'center',
     backgroundColor: '#F8F4EE',
@@ -1034,12 +980,14 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   addResult: { color: '#117579', padding: Spacing.two },
+  addResultAdded: { color: '#2F7D5D' },
   cameraContainer: { backgroundColor: '#000000', flex: 1 },
   cameraOverlay: {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'space-between',
     padding: Spacing.four,
+    paddingBottom: BottomTabInset + Spacing.four,
   },
   cameraTitle: { color: '#FFFFFF', textAlign: 'center' },
   cameraClose: {

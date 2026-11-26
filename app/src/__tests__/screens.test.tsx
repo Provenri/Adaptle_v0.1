@@ -160,24 +160,22 @@ async function renderScreen(element: ReactElement) {
 }
 
 describe('tab screens', () => {
-  it('opens book discovery from the Find tab and returns to the library on close', async () => {
+  it('renders book discovery as the Find tab page', async () => {
     const screen = await renderScreen(<FindScreen />);
 
-    expect(screen.getByText('Add a book')).toBeTruthy();
+    expect(screen.getByText('Find a Book')).toBeTruthy();
     expect(screen.getByLabelText('Search book catalog')).toBeTruthy();
-
-    await fireEvent.press(screen.getByRole('button', { name: 'Close Add Book' }));
-
-    expect(screen.queryByLabelText('Search book catalog')).toBeNull();
-    expect(mockReplace).toHaveBeenCalledWith('/library');
+    expect(screen.queryByRole('button', { name: 'Close Add Book' })).toBeNull();
   });
 
   it('renders the Play screen', async () => {
-    const { getAllByText, getByLabelText, getByText, queryByText } = await renderScreen(
-      <PlayScreen />
-    );
-    expect(getByText(/ADAPTLE/)).toBeTruthy();
-    expect(getByLabelText('Round progress: 1 of 5 main rounds, 3 points available')).toBeTruthy();
+    const { getAllByText, getByLabelText, getByText, queryByLabelText, queryByText } =
+      await renderScreen(<PlayScreen />);
+    expect(queryByText(/ADAPTLE #/)).toBeNull();
+    expect(
+      queryByLabelText('Round progress: 1 of 5 main rounds, 3 points available')
+    ).toBeNull();
+    expect(getByLabelText('Round 1 of 5, 3 points available')).toBeTruthy();
     expect(queryByText(/Current round potential/)).toBeNull();
     expect(getByText("What is the story's one-line premise?")).toBeTruthy();
     expect(getByText('Source book')).toBeTruthy();
@@ -207,6 +205,10 @@ describe('tab screens', () => {
   it('unlocks hints and progresses the full Play flow', async () => {
     const screen = await renderScreen(<PlayScreen />);
 
+    const clueToggle = screen.getByRole('button', { name: 'Need a clue?' });
+    expect(clueToggle.props.accessibilityState).toEqual({ expanded: false });
+    await fireEvent.press(clueToggle);
+    expect(clueToggle.props.accessibilityState).toEqual({ expanded: true });
     await fireEvent.press(screen.getByRole('button', { name: 'Unlock · -1 pt' }));
     expect(screen.getByText('Dystopian 2019 Los Angeles')).toBeTruthy();
     expect(screen.getByText('Screen')).toBeTruthy();
@@ -244,6 +246,8 @@ describe('tab screens', () => {
     );
     await fireEvent.press(screen.getByRole('button', { name: 'See daily score' }));
     expect(screen.getByText('17 / 18 PTS')).toBeTruthy();
+    expect(screen.getByLabelText('Adaptle Daily complete header')).toBeTruthy();
+    expect(screen.queryByRole('progressbar')).toBeNull();
     expect(screen.queryByText(/books? saved to your shelf today/)).toBeNull();
   });
 
@@ -251,7 +255,8 @@ describe('tab screens', () => {
     const screen = await renderScreen(<LibraryScreen />);
     expect(screen.queryByText('1 book saved · 1 screen adaptation')).toBeNull();
     expect(screen.queryByText('Shelf overview')).toBeNull();
-    expect(screen.getByText('1 playable')).toBeTruthy();
+    expect(screen.queryByText('YOUR SHELF')).toBeNull();
+    expect(screen.queryByText('1 playable')).toBeNull();
     expect(screen.getByText('Do Androids Dream of Electric Sheep?')).toBeTruthy();
     expect(screen.getByText('🎬 Blade Runner (1982)')).toBeTruthy();
 
@@ -290,6 +295,7 @@ describe('tab screens', () => {
       )
     ).toBeNull();
 
+    await fireEvent.press(screen.getByRole('button', { name: 'Need a clue?' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Unlock · -1 pt' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Unlock · -1 pt' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Unlock final clue · 1 pt' }));
@@ -316,9 +322,9 @@ describe('tab screens', () => {
     expect(await screen.findByText('Andy Weir · 2021')).toBeTruthy();
     await fireEvent.press(await screen.findByText('Project Hail Mary'));
 
-    expect(screen.queryByLabelText('Search book catalog')).toBeNull();
-    expect(screen.queryByText('2 books saved · 1 screen adaptation')).toBeNull();
-    expect(screen.getByText('Project Hail Mary')).toBeTruthy();
+    expect(screen.getByLabelText('Search book catalog')).toBeTruthy();
+    expect(screen.getByText('Added')).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it('filters the library to books with adaptations', async () => {

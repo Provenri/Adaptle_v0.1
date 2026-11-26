@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { DailyRoundDetails } from '@/lib/daily-puzzle';
@@ -20,6 +21,8 @@ export function PremiseQuestion({
   onHint: () => void;
   onAnswer: (choiceId: string) => void;
 }) {
+  const [hintsExpanded, setHintsExpanded] = useState(false);
+
   return (
     <View style={styles.stack}>
       <View style={styles.pairedWorks}>
@@ -81,31 +84,45 @@ export function PremiseQuestion({
       </View>
 
       <View style={styles.section}>
-        <ThemedText type="smallBold" style={styles.sectionTitle}>
-          Need a clue?
-        </ThemedText>
-        <HintCard
-          number={1}
-          title="Setting"
-          unlocked={hintsUsed >= 1}
-          value={details.settingHint}
-          action={hintsUsed === 0 ? onHint : undefined}
-        />
-        <HintCard
-          number={2}
-          title="Character roles"
-          unlocked={hintsUsed >= 2}
-          value={details.characterHint}
-          action={hintsUsed === 1 ? onHint : undefined}
-        />
-        <HintCard
-          number={3}
-          title="Premise keywords"
-          unlocked={hintsUsed >= 3}
-          value={details.premiseKeywords.join(' · ')}
-          action={hintsUsed === 2 ? onHint : undefined}
-          actionLabel="Unlock final clue · 1 pt"
-        />
+        <Pressable
+          accessibilityLabel="Need a clue?"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: hintsExpanded }}
+          onPress={() => setHintsExpanded((expanded) => !expanded)}
+          style={({ pressed }) => [styles.hintToggle, pressed && styles.pressed]}>
+          <ThemedText type="smallBold" style={styles.sectionTitle}>
+            Need a clue?
+          </ThemedText>
+          <ThemedText type="smallBold" style={styles.hintToggleIcon}>
+            {hintsExpanded ? '−' : '+'}
+          </ThemedText>
+        </Pressable>
+        {hintsExpanded ? (
+          <View style={styles.hintList}>
+            <HintCard
+              number={1}
+              title="Setting"
+              unlocked={hintsUsed >= 1}
+              value={details.settingHint}
+              action={hintsUsed === 0 ? onHint : undefined}
+            />
+            <HintCard
+              number={2}
+              title="Character roles"
+              unlocked={hintsUsed >= 2}
+              value={details.characterHint}
+              action={hintsUsed === 1 ? onHint : undefined}
+            />
+            <HintCard
+              number={3}
+              title="Premise keywords"
+              unlocked={hintsUsed >= 3}
+              value={details.premiseKeywords.join(' · ')}
+              action={hintsUsed === 2 ? onHint : undefined}
+              actionLabel="Unlock final clue · 1 pt"
+            />
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.section}>
@@ -198,6 +215,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
+  hintToggle: {
+    alignItems: 'center',
+    backgroundColor: '#F4EEE6',
+    borderRadius: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  hintToggleIcon: { color: '#117579', fontSize: 20, lineHeight: 24 },
+  hintList: { gap: Spacing.two },
   hintCard: {
     alignItems: 'center',
     backgroundColor: '#F4EEE6',

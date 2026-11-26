@@ -132,11 +132,14 @@ components:
 
 ### Header
 
-- Use the 56×56 dark-green rounded `OpenBookArchAppIcon` tile in Play and My Library headers.
+- Use the 48×48 dark-green rounded `OpenBookArchAppIcon` tile centered in a 56px header slot in Play and My Library headers.
 - Use the same tile at context-specific sizes elsewhere outside Welcome (52px in Privacy Policy and 34px in shared score artwork).
+- On the dark-green shared score card, invert the 34px tile to a cream `#FFF8E7` background with a forest `#173E32` glyph for contrast.
 - Default tile colors are `#143326` for the background and `#F5F2EB` for the glyph.
-- Pair the teal uppercase eyebrow with a 32/44 semibold title.
-- Keep header additions, such as streak or add-book controls, aligned to the existing component rather than introducing a top navigation bar.
+- Align Play and My Library headers to the same three-part geometry: logo at the content's left edge, title after the 56px logo and 8px gap, and action centered in a 56px slot at the right edge.
+- Use compact 24px/32px semibold, single-line titles for `Round <n> of 5`, `Common Thread`, `My Library`, and `Daily complete`.
+- Keep Play's streak control and My Library's search control horizontally aligned with the title.
+- Keep header additions aligned to the existing component rather than introducing a top navigation bar.
 
 ### Welcome mark
 
@@ -154,7 +157,9 @@ components:
 - Selected tab: `#163C32` with white icon/text.
 - Unselected tab: transparent within the white capsule with `#163C32` icon/text.
 - Capsule shadow uses forest `#173E32`, 0.16 opacity, 4px vertical offset, 12px radius, and Android elevation 8.
-- `Find` reuses the existing My Library screen and opens its Add Book modal immediately; closing it returns to My Library.
+- `Find a Book` is a dedicated catalog page that reuses the Add Book search, filters, surprise, scan, and result layout.
+- Adding a book from `Find a Book` keeps the user on the catalog page.
+- Surprise and scan actions are icon-only 56px floating circles above the tab bar: wrapped gift in terracotta and barcode in teal.
 
 ### Primary button
 
@@ -163,11 +168,12 @@ components:
 
 ### Puzzle question
 
-- Header: app icon, `ADAPTLE #<id>`, `Round <n> of 5`, and compact streak pill.
-- Progress: five 36px circles inside one full-width deep-green capsule. Current is forest with a white outline, completed is forest with a checkmark, and inactive is warm white.
-- Keep the round header as the visible round count; expose the actual `getRoundPotential()` value to assistive technology instead of repeating it beside the compact progress bar.
+- Header: app icon, `Round <n> of 5` or `Common Thread`, and compact streak pill.
+- The Puzzle does not show a progress bar during active play or the completed Daily complete state.
+- Keep the round header as the visible round count and expose the actual `getRoundPotential()` value through its accessibility label.
 - Paired works use two equal columns, a 16px gap, and 2:3 artwork at 8px radius.
 - Hint cards and answer cards use parchment `#F4EEE6`, 14px corners, and 16px padding.
+- The `Need a clue?` section is a collapsed-by-default, accessible expandable control and resets closed for each round.
 - Answer badges are 30px terracotta circles.
 
 ### Puzzle reveal
@@ -179,11 +185,10 @@ components:
 
 ### My Library
 
-- Header uses `YOUR SHELF` and `My Library`, with a magnifying-glass action that reveals the shelf search field on demand.
-- `1 playable` sits beside the `YOUR SHELF` eyebrow.
+- Header uses the app icon and `My Library`, with a magnifying-glass action that reveals the shelf search field on demand.
 - Filters are four standalone 48px pill buttons: All, To read, Reading, Finished. The selected filter is deep forest; unselected pills are white with a subtle border.
 - Search is hidden by default and appears as a muted parchment 14px-radius field when the header magnifier is pressed.
-- Add Book belongs to the `Find` tab and its catalog modal, not the My Library header or empty state.
+- Add Book belongs to the `Find` tab's catalog page, not the My Library header or empty state.
 - Book cards use warm parchment, 18px corners, 16px padding, a 92px typographic cover, status pill, and optional teal Play adaptation action.
 - Legal links are subtle footer links, not a separate navigation destination bar.
 
