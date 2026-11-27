@@ -56,8 +56,6 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "audit:stitch": "node scripts/audit-react-native.mjs",
-    "audit:stitch:test": "node --test scripts/audit-react-native.test.mjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

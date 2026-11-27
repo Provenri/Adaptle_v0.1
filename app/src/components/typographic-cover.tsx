@@ -12,6 +12,8 @@ import Svg, {
   Text,
 } from 'react-native-svg';
 
+import { Depth } from '@/constants/theme';
+
 export const COVER_THEMES = [
   'scifi_teal',
   'thriller_navy',
@@ -145,68 +147,70 @@ export function TypographicCover({
       accessibilityRole="image"
       style={[styles.cover, { width }, style]}
       testID={testID}>
-      <Svg viewBox="0 0 200 300" width="100%" height="100%">
-        <Defs>
-          <LinearGradient id={`${coverTheme}-gradient`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={palette.start} />
-            <Stop offset="1" stopColor={palette.end} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="200" height="300" fill={`url(#${coverTheme}-gradient)`} />
-        <CoverMotif coverTheme={coverTheme} palette={palette} />
+      <View style={styles.artwork}>
+        <Svg viewBox="0 0 200 300" width="100%" height="100%">
+          <Defs>
+            <LinearGradient id={`${coverTheme}-gradient`} x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor={palette.start} />
+              <Stop offset="1" stopColor={palette.end} />
+            </LinearGradient>
+          </Defs>
+          <Rect width="200" height="300" fill={`url(#${coverTheme}-gradient)`} />
+          <CoverMotif coverTheme={coverTheme} palette={palette} />
 
-        {genre ? (
+          {genre ? (
+            <Text
+              x="100"
+              y="30"
+              fill={palette.mutedInk}
+              fontSize="8"
+              fontFamily="sans-serif"
+              fontWeight="700"
+              letterSpacing="1.8"
+              textAnchor="middle">
+              {genre.toUpperCase()}
+            </Text>
+          ) : null}
+
+          {titleLayout.lines.map((line, index) => (
+            <Text
+              key={`${line}-${index}`}
+              x="100"
+              y={titleY + index * titleLayout.lineHeight}
+              fill={palette.ink}
+              fontSize={titleLayout.fontSize}
+              fontFamily="serif"
+              fontWeight="700"
+              textAnchor="middle">
+              {line}
+            </Text>
+          ))}
+
+          <Line x1="78" x2="122" y1={authorY - 14} y2={authorY - 14} stroke={palette.accent} />
           <Text
             x="100"
-            y="30"
+            y={authorY}
             fill={palette.mutedInk}
-            fontSize="8"
+            fontSize="11"
+            fontFamily="sans-serif"
+            fontWeight="600"
+            letterSpacing="0.7"
+            textAnchor="middle">
+            {author.toUpperCase()}
+          </Text>
+          <Text
+            x="100"
+            y="281"
+            fill={palette.mutedInk}
+            fontSize="7"
             fontFamily="sans-serif"
             fontWeight="700"
-            letterSpacing="1.8"
+            letterSpacing="2.4"
             textAnchor="middle">
-            {genre.toUpperCase()}
+            ADAPTLE EDITION
           </Text>
-        ) : null}
-
-        {titleLayout.lines.map((line, index) => (
-          <Text
-            key={`${line}-${index}`}
-            x="100"
-            y={titleY + index * titleLayout.lineHeight}
-            fill={palette.ink}
-            fontSize={titleLayout.fontSize}
-            fontFamily="serif"
-            fontWeight="700"
-            textAnchor="middle">
-            {line}
-          </Text>
-        ))}
-
-        <Line x1="78" x2="122" y1={authorY - 14} y2={authorY - 14} stroke={palette.accent} />
-        <Text
-          x="100"
-          y={authorY}
-          fill={palette.mutedInk}
-          fontSize="11"
-          fontFamily="sans-serif"
-          fontWeight="600"
-          letterSpacing="0.7"
-          textAnchor="middle">
-          {author.toUpperCase()}
-        </Text>
-        <Text
-          x="100"
-          y="281"
-          fill={palette.mutedInk}
-          fontSize="7"
-          fontFamily="sans-serif"
-          fontWeight="700"
-          letterSpacing="2.4"
-          textAnchor="middle">
-          ADAPTLE EDITION
-        </Text>
-      </Svg>
+        </Svg>
+      </View>
     </View>
   );
 }
@@ -275,9 +279,14 @@ function CoverMotif({ coverTheme, palette }: { coverTheme: CoverTheme; palette: 
 
 const styles = StyleSheet.create({
   cover: {
+    ...Depth.raised,
     aspectRatio: 2 / 3,
     borderRadius: 4,
-    overflow: 'hidden',
     backgroundColor: '#173E32',
+  },
+  artwork: {
+    borderRadius: 4,
+    flex: 1,
+    overflow: 'hidden',
   },
 });

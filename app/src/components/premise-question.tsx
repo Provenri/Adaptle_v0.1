@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { DailyRoundDetails } from '@/lib/daily-puzzle';
 import type { GameChoice } from '@/lib/game-engine';
-import { Spacing } from '@/constants/theme';
+import { Depth, Spacing } from '@/constants/theme';
 import { ThemedText } from './themed-text';
 import { TypographicCover } from './typographic-cover';
 
@@ -197,7 +197,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textTransform: 'uppercase',
   },
-  workImage: { aspectRatio: 2 / 3, borderRadius: 8, overflow: 'hidden', width: '100%' },
+  workImage: {
+    ...Depth.raised,
+    aspectRatio: 2 / 3,
+    borderRadius: 8,
+    overflow: 'visible',
+    width: '100%',
+  },
   posterPlaceholder: {
     alignItems: 'center',
     backgroundColor: '#173E32',
@@ -216,6 +222,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   hintToggle: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#F4EEE6',
     borderRadius: 14,
@@ -227,6 +234,7 @@ const styles = StyleSheet.create({
   hintToggleIcon: { color: '#117579', fontSize: 20, lineHeight: 24 },
   hintList: { gap: Spacing.two },
   hintCard: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#F4EEE6',
     borderRadius: 14,
@@ -237,8 +245,14 @@ const styles = StyleSheet.create({
   },
   hintUnlocked: { borderColor: '#B8C9BD', borderWidth: 1 },
   hintCopy: { flex: 1, gap: Spacing.one },
-  hintButton: { backgroundColor: '#173E32', borderRadius: 999, padding: Spacing.two },
+  hintButton: {
+    ...Depth.surface,
+    backgroundColor: '#173E32',
+    borderRadius: 999,
+    padding: Spacing.two,
+  },
   choice: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#F4EEE6',
     borderRadius: 14,
@@ -247,6 +261,7 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   choiceBadge: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#A84732',
     borderRadius: 999,
@@ -256,5 +271,5 @@ const styles = StyleSheet.create({
   },
   choiceText: { flex: 1 },
   lightText: { color: '#FFFFFF' },
-  pressed: { opacity: 0.65 },
+  pressed: { opacity: 0.65, transform: [{ scale: 0.98 }] },
 });

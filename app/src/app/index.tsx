@@ -18,7 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { OpenBookArchAppIcon } from '@/components/OpenBookArchAppIcon';
 import { OpenBookArchLogo } from '@/components/OpenBookArchLogo';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Depth, MaxContentWidth, Spacing } from '@/constants/theme';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
 import type { BonusItem, DailyRoundDetails, ProductionDailyPuzzle } from '@/lib/daily-puzzle';
 import {
@@ -730,11 +730,7 @@ function SummaryView({
       <ViewShot ref={scoreCard} options={{ format: 'png', quality: 1 }}>
         <View style={styles.shareCard} testID="daily-score-card">
           <View style={styles.shareBrandRow}>
-            <OpenBookArchAppIcon
-              backgroundColor="#FFF8E7"
-              glyphColor="#173E32"
-              size={34}
-            />
+            <OpenBookArchAppIcon backgroundColor="#FFF8E7" glyphColor="#173E32" size={34} />
             <ThemedText type="smallBold" style={styles.shareBrand}>
               ADAPTLE · {formatPuzzleDate(puzzleDate)}
             </ThemedText>
@@ -839,6 +835,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   welcomeCard: {
+    ...Depth.raised,
     alignItems: 'center',
     backgroundColor: '#F8F4EE',
     borderRadius: 24,
@@ -868,6 +865,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   statusPanel: {
+    ...Depth.raised,
     alignItems: 'center',
     backgroundColor: '#F8F4EE',
     borderRadius: 22,
@@ -901,7 +899,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   headerTitle: {
+    color: '#143326',
     fontSize: 24,
+    fontWeight: 800,
     lineHeight: 32,
   },
   headerLogoSlot: {
@@ -918,6 +918,7 @@ const styles = StyleSheet.create({
     width: 56,
   },
   streak: {
+    ...Depth.surface,
     backgroundColor: '#FFF1D5',
     borderRadius: 999,
     color: '#74421B',
@@ -932,6 +933,7 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
   },
   streakModal: {
+    ...Depth.floating,
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
     gap: Spacing.three,
@@ -956,6 +958,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   choice: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#F4EEE6',
     borderRadius: 14,
@@ -964,6 +967,7 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   choiceBadge: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#173E32',
     borderRadius: 999,
@@ -983,6 +987,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   resultPanel: {
+    ...Depth.raised,
     alignItems: 'center',
     backgroundColor: '#F8F4EE',
     borderRadius: 22,
@@ -990,6 +995,7 @@ const styles = StyleSheet.create({
     padding: Spacing.five,
   },
   adaptationCard: {
+    ...Depth.surface,
     backgroundColor: '#F8F4EE',
     borderRadius: 18,
     flexDirection: 'row',
@@ -997,6 +1003,7 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   correctAnswer: {
+    ...Depth.surface,
     backgroundColor: '#EDF3EC',
     borderRadius: 14,
     gap: Spacing.one,
@@ -1008,6 +1015,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   posterFrame: {
+    ...Depth.raised,
     aspectRatio: 2 / 3,
     backgroundColor: '#173E32',
     borderRadius: 8,
@@ -1055,6 +1063,7 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   resultBanner: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#2F7D5D',
     borderRadius: 12,
@@ -1081,6 +1090,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   shelfButtonSelected: {
+    ...Depth.surface,
     backgroundColor: '#173E32',
   },
   shelfButtonText: {
@@ -1090,6 +1100,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   resultIcon: {
+    ...Depth.raised,
     alignItems: 'center',
     backgroundColor: '#2F7D5D',
     borderRadius: 999,
@@ -1115,6 +1126,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   primaryButton: {
+    ...Depth.raised,
     alignItems: 'center',
     alignSelf: 'stretch',
     backgroundColor: '#173E32',
@@ -1133,11 +1145,13 @@ const styles = StyleSheet.create({
     width: '42%',
   },
   bonusPoster: {
+    ...Depth.raised,
     aspectRatio: 2 / 3,
     borderRadius: 4,
     width: '100%',
   },
   connector: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#F2A65A',
     borderRadius: 999,

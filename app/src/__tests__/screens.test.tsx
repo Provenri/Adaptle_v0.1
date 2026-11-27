@@ -8,6 +8,7 @@ import FindScreen from '@/app/find';
 import PrivacyPolicyScreen from '@/app/privacy';
 import ContactScreen from '@/app/contact';
 import ImpressumScreen, { ImpressumContent } from '@/app/impressum';
+import ProfileScreen from '@/app/profile';
 import SharedPracticeScreen from '@/app/practice';
 import { bonusBooks, demoPuzzle, demoRoundDetails } from '@/test-fixtures/demo-puzzle';
 import type { ProductionDailyPuzzle } from '@/lib/daily-puzzle';
@@ -89,11 +90,11 @@ jest.mock('@/lib/supabase', () => ({
   deleteDailyScore: async () => undefined,
   fetchUserLibrary: async () => [],
   fetchTmdbProviders: async () => ({
-    region: 'DE',
-    link: null,
-    flatrate: [{ name: 'Prime Video', logoPath: null }],
-    rent: [{ name: 'Apple TV', logoPath: null }],
-    buy: [],
+    region: 'GLOBAL',
+    providers: [
+      { name: 'Prime Video', logoPath: null, regionCount: 42 },
+      { name: 'Apple TV', logoPath: null, regionCount: 38 },
+    ],
   }),
   searchBookCatalog: async () => [
     {
@@ -172,9 +173,7 @@ describe('tab screens', () => {
     const { getAllByText, getByLabelText, getByText, queryByLabelText, queryByText } =
       await renderScreen(<PlayScreen />);
     expect(queryByText(/ADAPTLE #/)).toBeNull();
-    expect(
-      queryByLabelText('Round progress: 1 of 5 main rounds, 3 points available')
-    ).toBeNull();
+    expect(queryByLabelText('Round progress: 1 of 5 main rounds, 3 points available')).toBeNull();
     expect(getByLabelText('Round 1 of 5, 3 points available')).toBeTruthy();
     expect(queryByText(/Current round potential/)).toBeNull();
     expect(getByText("What is the story's one-line premise?")).toBeTruthy();
@@ -251,8 +250,12 @@ describe('tab screens', () => {
     expect(screen.queryByText(/books? saved to your shelf today/)).toBeNull();
   });
 
-  it('renders the My Library screen', async () => {
+  it('renders the Library screen without profile links', async () => {
     const screen = await renderScreen(<LibraryScreen />);
+    expect(screen.getByText('Library')).toBeTruthy();
+    expect(screen.queryByText('Contact')).toBeNull();
+    expect(screen.queryByText('Privacy Policy')).toBeNull();
+    expect(screen.queryByText('Impressum')).toBeNull();
     expect(screen.queryByText('1 book saved · 1 screen adaptation')).toBeNull();
     expect(screen.queryByText('Shelf overview')).toBeNull();
     expect(screen.queryByText('YOUR SHELF')).toBeNull();
@@ -275,6 +278,16 @@ describe('tab screens', () => {
     expect(screen.getByRole('button', { name: 'Reading 1' })).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Reading 1' }));
     expect(screen.getByRole('button', { name: /Play adaptation/ })).toBeTruthy();
+  });
+
+  it('shows disabled user access and legal links on Profile', async () => {
+    const screen = await renderScreen(<ProfileScreen />);
+    expect(screen.getByRole('button', { name: 'User' }).props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    expect(screen.getByRole('button', { name: 'Contact' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Privacy Policy' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Impressum' })).toBeTruthy();
   });
 
   it('uses premise selection for library adaptation practice', async () => {

@@ -102,6 +102,24 @@ export function TabFindIcon({
   );
 }
 
+export function TabProfileIcon({ color, active = false }: { color: string; active?: boolean }) {
+  return (
+    <Svg
+      accessibilityElementsHidden
+      fill="none"
+      height={24}
+      stroke={color}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      width={24}>
+      <Circle cx="12" cy="8" fill={active ? color : 'none'} r="4" />
+      <Path d="M4.5 21a7.5 7.5 0 0 1 15 0" fill={active ? color : 'none'} stroke={color} />
+    </Svg>
+  );
+}
+
 export function GiftIcon({ color, size = 24 }: { color: string; size?: number }) {
   return (
     <Svg

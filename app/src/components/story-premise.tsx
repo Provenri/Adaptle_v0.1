@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 
-import { Spacing } from '@/constants/theme';
+import { Depth, Spacing } from '@/constants/theme';
 
 export function StoryPremise({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -36,6 +36,7 @@ export function StoryPremise({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   container: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: 'rgba(168, 71, 50, 0.07)',
     borderLeftColor: '#A84732',
@@ -69,6 +70,7 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+    transform: [{ scale: 0.99 }],
   },
   endMark: {
     alignSelf: 'flex-end',

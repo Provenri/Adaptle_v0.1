@@ -5,7 +5,7 @@
 
 import '@/global.css';
 
-import { Platform } from 'react-native';
+import { Platform, type ViewStyle } from 'react-native';
 
 export const Colors = {
   light: {
@@ -63,3 +63,27 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 68, android: 72 }) ?? 0;
 export const MaxContentWidth = 800;
+
+export const Depth = {
+  surface: {
+    elevation: 3,
+    shadowColor: '#173E32',
+    shadowOffset: { height: 2, width: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+  },
+  raised: {
+    elevation: 6,
+    shadowColor: '#173E32',
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+  },
+  floating: {
+    elevation: 10,
+    shadowColor: '#173E32',
+    shadowOffset: { height: 6, width: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+  },
+} as const satisfies Record<string, ViewStyle>;

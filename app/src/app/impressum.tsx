@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Depth, MaxContentWidth, Spacing } from '@/constants/theme';
 import { isImpressumComplete, LEGAL_CONFIG, type LegalConfig } from '@/lib/legal';
 
 export default function ImpressumScreen() {
@@ -123,6 +123,7 @@ const styles = StyleSheet.create({
   },
   backButton: { alignSelf: 'flex-start', paddingVertical: Spacing.two },
   notice: {
+    ...Depth.surface,
     backgroundColor: '#FFF1D5',
     borderRadius: 12,
     gap: Spacing.one,

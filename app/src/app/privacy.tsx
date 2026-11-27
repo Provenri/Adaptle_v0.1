@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { OpenBookArchAppIcon } from '@/components/OpenBookArchAppIcon';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Depth, MaxContentWidth, Spacing } from '@/constants/theme';
 import { getSupabaseClient, initializeAnonymousSession } from '@/lib/supabase';
 import { LEGAL_CONFIG } from '@/lib/legal';
 
@@ -291,8 +291,14 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   policyText: { lineHeight: 22 },
-  idCard: { borderRadius: 12, gap: Spacing.one, padding: Spacing.three },
+  idCard: {
+    ...Depth.surface,
+    borderRadius: 12,
+    gap: Spacing.one,
+    padding: Spacing.three,
+  },
   emailButton: {
+    ...Depth.raised,
     alignItems: 'center',
     backgroundColor: '#173E32',
     borderRadius: 999,

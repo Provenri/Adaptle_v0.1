@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Depth, MaxContentWidth, Spacing } from '@/constants/theme';
 import { CONTACT_CATEGORIES, type ContactCategory } from '@/lib/contact';
 import { LEGAL_CONFIG } from '@/lib/legal';
 import { submitContactRequest } from '@/lib/supabase';
@@ -265,6 +265,7 @@ const styles = StyleSheet.create({
   link: { color: '#117579', textDecorationLine: 'underline' },
   hiddenField: { display: 'none' },
   primaryButton: {
+    ...Depth.raised,
     alignItems: 'center',
     backgroundColor: '#173E32',
     borderRadius: 999,
@@ -274,6 +275,7 @@ const styles = StyleSheet.create({
   lightText: { color: '#FFFFFF' },
   directEmail: { lineHeight: 20, textAlign: 'center' },
   success: {
+    ...Depth.raised,
     backgroundColor: '#F4EEE6',
     borderRadius: 16,
     gap: Spacing.two,

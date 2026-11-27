@@ -10,9 +10,9 @@ import { type Href } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Spacing } from '@/constants/theme';
+import { Depth, Spacing } from '@/constants/theme';
 
-import { TabFindIcon, TabLibraryIcon, TabPlayIcon } from './tab-icons';
+import { TabFindIcon, TabLibraryIcon, TabPlayIcon, TabProfileIcon } from './tab-icons';
 import { ThemedText } from './themed-text';
 
 export default function AppTabs() {
@@ -25,10 +25,13 @@ export default function AppTabs() {
             <TabButton icon={TabPlayIcon}>Play</TabButton>
           </TabTrigger>
           <TabTrigger name="library" href="/library" asChild>
-            <TabButton icon={TabLibraryIcon}>My Library</TabButton>
+            <TabButton icon={TabLibraryIcon}>Library</TabButton>
           </TabTrigger>
           <TabTrigger name="find" href={'/find' as Href} asChild>
             <TabButton icon={TabFindIcon}>Find</TabButton>
+          </TabTrigger>
+          <TabTrigger name="profile" href={'/profile' as Href} asChild>
+            <TabButton icon={TabProfileIcon}>Profile</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -48,7 +51,6 @@ export function TabButton({ children, icon: Icon, isFocused, ...props }: TabButt
       {...(props as React.ComponentProps<typeof Pressable>)}
       style={({ pressed }) => [
         styles.tabButton,
-        children === 'My Library' && styles.libraryTabButton,
         isFocused && styles.tabButtonSelected,
         pressed && styles.pressed,
       ]}>
@@ -84,29 +86,25 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
   innerContainer: {
+    ...Depth.floating,
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderColor: '#D9DFDB',
     borderRadius: 999,
     borderWidth: 1,
-    elevation: 8,
     flexDirection: 'row',
     gap: Spacing.one,
     justifyContent: 'center',
     maxWidth: 480,
     padding: Spacing.two,
-    shadowColor: '#173E32',
-    shadowOffset: { height: 4, width: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
     width: '100%',
   },
   tabButton: {
     borderRadius: 999,
     flex: 1,
   },
-  libraryTabButton: { flex: 1.2 },
   tabButtonSelected: {
+    ...Depth.surface,
     backgroundColor: '#163C32',
     borderWidth: 0,
   },

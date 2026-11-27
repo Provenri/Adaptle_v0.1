@@ -102,7 +102,7 @@ components:
 
 - Adaptle is an Expo Router + React Native application for mobile, with a React Native Web build.
 - Use portrait-mobile layouts as the primary design target unless a request explicitly targets web-only desktop.
-- Stitch output is a prototype/reference artifact. Production implementation must use existing React Native primitives, `StyleSheet`, Expo Router, and repository components.
+- Implement designs with existing React Native primitives, `StyleSheet`, Expo Router, and repository components.
 - Do not introduce Tailwind, shadcn/ui, DOM elements, CSS-in-JS, or React web assumptions into the app.
 
 ## Visual atmosphere
@@ -111,6 +111,8 @@ components:
 - White or black platform backgrounds carry the screen; warm parchment surfaces define content groups.
 - Deep forest green anchors actions and navigation. Teal marks active progress and labels. Terracotta is reserved for adaptation prompts, answer markers, removal, and incorrect states.
 - Favor clear editorial hierarchy over decorative flourishes, hero photography, invented statistics, or extra marketing copy.
+- Use restrained forest-tinted shadows to give collectible and interactive surfaces a physical hierarchy. Reserve the strongest elevation for floating actions and navigation; keep form fields and reading surfaces visually calm.
+- Pressable raised surfaces should compress slightly when pressed without changing copy, geometry, or accessibility state.
 
 ## Typography
 
@@ -132,13 +134,13 @@ components:
 
 ### Header
 
-- Use the 48×48 dark-green rounded `OpenBookArchAppIcon` tile centered in a 56px header slot in Play and My Library headers.
+- Use the 48×48 dark-green rounded `OpenBookArchAppIcon` tile centered in a 56px header slot in Play, Library, and Profile headers.
 - Use the same tile at context-specific sizes elsewhere outside Welcome (52px in Privacy Policy and 34px in shared score artwork).
 - On the dark-green shared score card, invert the 34px tile to a cream `#FFF8E7` background with a forest `#173E32` glyph for contrast.
 - Default tile colors are `#143326` for the background and `#F5F2EB` for the glyph.
-- Align Play and My Library headers to the same three-part geometry: logo at the content's left edge, title after the 56px logo and 8px gap, and action centered in a 56px slot at the right edge.
-- Use compact 24px/32px semibold, single-line titles for `Round <n> of 5`, `Common Thread`, `My Library`, and `Daily complete`.
-- Keep Play's streak control and My Library's search control horizontally aligned with the title.
+- Align Play and Library headers to the same three-part geometry: logo at the content's left edge, title after the 56px logo and 8px gap, and action centered in a 56px slot at the right edge.
+- Use compact 24px/32px semibold, single-line titles for `Round <n> of 5`, `Common Thread`, `Library`, `Profile`, and `Daily complete`.
+- Keep Play's streak control and Library's search control horizontally aligned with the title.
 - Keep header additions aligned to the existing component rather than introducing a top navigation bar.
 
 ### Welcome mark
@@ -151,9 +153,9 @@ components:
 
 ### Bottom navigation
 
-- Exactly three tabs: `Play`, `My Library`, and `Find`.
+- Exactly four tabs: `Play`, `Library`, `Find`, and `Profile`.
 - Tabs sit inside one elevated white floating capsule with a subtle warm-gray border and 8px inner padding.
-- Each tab is a 48px-minimum pill with 8px icon gap; `My Library` receives slightly more horizontal space.
+- Each tab is a 48px-minimum pill with an 8px icon gap.
 - Selected tab: `#163C32` with white icon/text.
 - Unselected tab: transparent within the white capsule with `#163C32` icon/text.
 - Capsule shadow uses forest `#173E32`, 0.16 opacity, 4px vertical offset, 12px radius, and Android elevation 8.
@@ -183,14 +185,14 @@ components:
 - Show the repository-provided director, cast, characters, provider names, correct premise, story premise, TMDB attribution, shelf actions, and next-round label.
 - Never replace these with invented dates, ranks, solve times, accuracy scores, or editorial metadata.
 
-### My Library
+### Library
 
-- Header uses the app icon and `My Library`, with a magnifying-glass action that reveals the shelf search field on demand.
+- Header uses the app icon and `Library`, with a magnifying-glass action that reveals the shelf search field on demand.
 - Filters are four standalone 48px pill buttons: All, To read, Reading, Finished. The selected filter is deep forest; unselected pills are white with a subtle border.
 - Search is hidden by default and appears as a muted parchment 14px-radius field when the header magnifier is pressed.
-- Add Book belongs to the `Find` tab's catalog page, not the My Library header or empty state.
+- Add Book belongs to the `Find` tab's catalog page, not the Library header or empty state.
 - Book cards use warm parchment, 18px corners, 16px padding, a 92px typographic cover, status pill, and optional teal Play adaptation action.
-- Legal links are subtle footer links, not a separate navigation destination bar.
+- Contact, Privacy Policy, and Impressum live on the Profile tab instead of the Library footer.
 
 ## Typographic cover themes
 
@@ -208,5 +210,3 @@ Generated covers are 2:3 and use SVG motifs. Preserve the repository palettes:
 - Preserve exact UI copy and data from the relevant source component or fixture.
 - Preserve accessibility labels, roles, expanded/selected/disabled states, and minimum touch targets.
 - For visuals, use repository assets or documented external asset paths; do not silently substitute placeholders.
-- Visually inspect every generated Stitch screenshot and its HTML before accepting it.
-- Hide rejected/replaced Stitch revisions instead of treating them as active design sources.

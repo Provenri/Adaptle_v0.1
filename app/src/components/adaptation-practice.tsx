@@ -7,7 +7,7 @@ import { PremiseQuestion } from './premise-question';
 import { StoryPremise } from './story-premise';
 import { ThemedText } from './themed-text';
 
-import { Spacing } from '@/constants/theme';
+import { Depth, Spacing } from '@/constants/theme';
 import { fetchAdaptationPractice } from '@/lib/daily-puzzle';
 import { resolvePracticeAdaptation } from '@/lib/supabase';
 import { getRoundPotential } from '@/lib/game-engine';
@@ -194,15 +194,17 @@ const styles = StyleSheet.create({
   correct: { color: '#2F7D5D', textAlign: 'center' },
   wrong: { color: '#A84732', textAlign: 'center' },
   reveal: {
+    ...Depth.raised,
     backgroundColor: '#F8F4EE',
     borderRadius: 16,
     flexDirection: 'row',
     gap: Spacing.three,
     padding: Spacing.three,
   },
-  poster: { aspectRatio: 2 / 3, borderRadius: 8, width: 90 },
+  poster: { ...Depth.surface, aspectRatio: 2 / 3, borderRadius: 8, width: 90 },
   revealCopy: { flex: 1, gap: Spacing.one },
   correctAnswer: {
+    ...Depth.surface,
     backgroundColor: '#E6F1ED',
     borderColor: '#B8C9BD',
     borderRadius: 14,
@@ -216,6 +218,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   button: {
+    ...Depth.raised,
     alignItems: 'center',
     backgroundColor: '#173E32',
     borderRadius: 999,

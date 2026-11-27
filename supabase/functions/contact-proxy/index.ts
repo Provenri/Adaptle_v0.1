@@ -22,6 +22,7 @@ Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return errorResponse('Method not allowed', 405);
 
+  let operation = 'process the contact request';
   try {
     const rawBody = await request.text();
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
@@ -43,12 +44,15 @@ Deno.serve(async (request) => {
     if (payload.anonymousUserId && payload.anonymousUserId !== userId) {
       return errorResponse('Invalid anonymous user identifier', 400);
     }
+    operation = 'check the contact request limit';
     if (await isRateLimited(userId, service)) {
       return errorResponse('Too many contact requests. Please try again later.', 429);
     }
 
     const requestId = crypto.randomUUID();
+    operation = 'store the contact request';
     await insertContactRequest(requestId, userId, payload, service);
+    operation = 'send the contact notification';
     const notificationStatus = await sendNotification(requestId, payload, service);
     await updateNotificationStatus(requestId, notificationStatus, service);
 
@@ -58,8 +62,8 @@ Deno.serve(async (request) => {
       notificationStatus,
     });
   } catch (error) {
-    console.error('Contact submission failed', error);
-    return errorResponse('Unable to send your message right now. Please try email.', 502);
+    console.error(`Contact submission failed while trying to ${operation}`, error);
+    return errorResponse(`Unable to ${operation} right now. Please try email.`, 502);
   }
 });
 
@@ -120,18 +124,17 @@ async function isRateLimited(
   url.searchParams.set('select', 'id');
   url.searchParams.set('anonymous_user_id', `eq.${userId}`);
   url.searchParams.set('created_at', `gte.${since}`);
+  url.searchParams.set('limit', RATE_LIMIT.toString());
   const response = await fetch(url, {
     headers: {
       apikey: service.serviceKey,
       Authorization: `Bearer ${service.serviceKey}`,
-      Prefer: 'count=exact',
-      Range: '0-4',
     },
   });
   if (!response.ok) throw new Error(`Rate-limit query failed: ${response.status}`);
-  const range = response.headers.get('content-range');
-  const count = Number(range?.split('/')[1] ?? 0);
-  return count >= RATE_LIMIT;
+  const requests = await response.json();
+  if (!Array.isArray(requests)) throw new Error('Rate-limit query returned an invalid response');
+  return requests.length >= RATE_LIMIT;
 }
 
 async function insertContactRequest(
@@ -184,8 +187,12 @@ async function sendNotification(
         ].join('\n'),
       }),
     });
-    return response.ok ? 'SENT' : 'FAILED';
-  } catch {
+    if (response.ok) return 'SENT';
+    const details = (await response.text()).slice(0, 500);
+    console.error(`Contact email provider rejected the request: ${response.status}`, details);
+    return 'FAILED';
+  } catch (error) {
+    console.error('Contact email provider request failed', error);
     return 'FAILED';
   }
 }

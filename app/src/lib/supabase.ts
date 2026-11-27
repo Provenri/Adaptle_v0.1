@@ -288,17 +288,15 @@ export async function fetchUserLibrary(): Promise<LibraryBook[]> {
 export type TmdbProvider = {
   name: string;
   logoPath: string | null;
+  regionCount: number;
 };
 
 export type TmdbProviders = {
-  region: string;
-  link: string | null;
-  flatrate: TmdbProvider[];
-  rent: TmdbProvider[];
-  buy: TmdbProvider[];
+  region: 'GLOBAL';
+  providers: TmdbProvider[];
 };
 
-export async function fetchTmdbProviders(tmdbId: number, region = 'DE'): Promise<TmdbProviders> {
+export async function fetchTmdbProviders(tmdbId: number): Promise<TmdbProviders> {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error('Supabase is not configured');
   await initializeAnonymousSession();
@@ -313,7 +311,7 @@ export async function fetchTmdbProviders(tmdbId: number, region = 'DE'): Promise
   const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
   if (!baseUrl) throw new Error('Supabase URL is not configured');
   const response = await fetch(
-    `${baseUrl}/functions/v1/tmdb-proxy?action=providers&tmdb_id=${tmdbId}&region=${region}`,
+    `${baseUrl}/functions/v1/tmdb-proxy?action=providers&tmdb_id=${tmdbId}`,
     {
       headers: {
         Authorization: `Bearer ${session.access_token}`,
@@ -327,7 +325,26 @@ export async function fetchTmdbProviders(tmdbId: number, region = 'DE'): Promise
       typeof payload.error === 'string' ? payload.error : 'Streaming provider lookup failed'
     );
   }
-  return payload as TmdbProviders;
+  if (Array.isArray(payload.providers)) {
+    return payload as TmdbProviders;
+  }
+
+  const legacyProviders = [
+    ...(Array.isArray(payload.flatrate) ? payload.flatrate : []),
+    ...(Array.isArray(payload.rent) ? payload.rent : []),
+    ...(Array.isArray(payload.buy) ? payload.buy : []),
+  ] as TmdbProvider[];
+
+  return {
+    region: 'GLOBAL',
+    providers: legacyProviders
+      .filter((provider) => typeof provider?.name === 'string' && provider.name)
+      .filter(
+        (provider, index, all) => all.findIndex((item) => item.name === provider.name) === index
+      )
+      .slice(0, 3)
+      .map((provider) => ({ ...provider, regionCount: 0 })),
+  };
 }
 
 export async function searchBookCatalog(

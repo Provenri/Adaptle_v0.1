@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AdaptationPractice } from '@/components/adaptation-practice';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Depth, Spacing } from '@/constants/theme';
 import { normalizeIsbn13, practiceDeepLink, practiceWebUrl } from '@/lib/practice-sharing';
 
 export default function SharedPracticeScreen() {
@@ -165,6 +165,7 @@ const styles = StyleSheet.create({
   eyebrow: { color: '#117579', letterSpacing: 1.2 },
   description: { lineHeight: 20 },
   openAppButton: {
+    ...Depth.surface,
     alignItems: 'center',
     alignSelf: 'flex-start',
     borderColor: '#173E32',
@@ -175,6 +176,7 @@ const styles = StyleSheet.create({
   },
   openAppText: { color: '#173E32' },
   primaryButton: {
+    ...Depth.raised,
     alignItems: 'center',
     backgroundColor: '#173E32',
     borderRadius: 999,

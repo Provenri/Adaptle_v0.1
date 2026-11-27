@@ -4,7 +4,6 @@ import {
   useCameraPermissions,
   type PermissionResponse,
 } from 'expo-camera';
-import { Link, type Href } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
@@ -24,7 +23,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { OpenBookArchAppIcon } from '@/components/OpenBookArchAppIcon';
 import { BarcodeIcon, GiftIcon, TabFindIcon } from '@/components/tab-icons';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Depth, MaxContentWidth, Spacing } from '@/constants/theme';
 import { providerNames, useTmdbProviders } from '@/hooks/use-tmdb-providers';
 import {
   hasPlayableAdaptation,
@@ -35,7 +34,6 @@ import {
 } from '@/data/library-data';
 import { getSurpriseBook, searchBookCatalog } from '@/lib/supabase';
 import { useLibrary } from '@/providers/app-data-provider';
-import { PrivacyPolicyContent } from './privacy';
 import { AdaptationPractice } from '@/components/adaptation-practice';
 
 type ShelfFilter = ShelfStatus | 'ALL';
@@ -45,7 +43,6 @@ export default function LibraryScreen() {
   const [filter, setFilter] = useState<ShelfFilter>('ALL');
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
-  const [privacyOpen, setPrivacyOpen] = useState(false);
   const [practiceBook, setPracticeBook] = useState<{
     isbn13: string;
     title: string;
@@ -82,7 +79,7 @@ export default function LibraryScreen() {
                 <OpenBookArchAppIcon size={48} />
               </View>
               <ThemedText numberOfLines={1} style={styles.headerTitle} type="subtitle">
-                My Library
+                Library
               </ThemedText>
             </View>
             <View style={styles.headingAction}>
@@ -196,35 +193,8 @@ export default function LibraryScreen() {
           ) : (
             <EmptyShelf query={query} />
           )}
-          <View style={styles.legalLinks}>
-            <Link href={'/impressum' as Href} style={styles.legalLink}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Impressum
-              </ThemedText>
-            </Link>
-            <Link href={'/contact' as Href} style={styles.legalLink}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Contact
-              </ThemedText>
-            </Link>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setPrivacyOpen(true)}
-              style={styles.privacyLink}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Privacy Policy
-              </ThemedText>
-            </Pressable>
-          </View>
         </ScrollView>
 
-        <Modal
-          animationType="slide"
-          onRequestClose={() => setPrivacyOpen(false)}
-          presentationStyle="fullScreen"
-          visible={privacyOpen}>
-          <PrivacyPolicyContent onBack={() => setPrivacyOpen(false)} />
-        </Modal>
         <Modal
           animationType="slide"
           onRequestClose={() => setPracticeBook(null)}
@@ -259,10 +229,12 @@ function ShelfFilterButton({
   onPress: () => void;
 }) {
   return (
+    <View style={styles.filterItem}>
     <Pressable
       accessibilityLabel={`${label} ${count}`}
       accessibilityRole="button"
       accessibilityState={{ selected }}
+        hitSlop={7}
       onPress={onPress}
       style={({ pressed }) => [
         styles.filterButton,
@@ -275,10 +247,11 @@ function ShelfFilterButton({
         numberOfLines={1}>
         {label}
       </ThemedText>
-      <ThemedText type="small" style={selected ? styles.filterCountSelected : styles.filterCount}>
+      </Pressable>
+      <ThemedText type="small" style={styles.filterCount}>
         {count}
       </ThemedText>
-    </Pressable>
+    </View>
   );
 }
 
@@ -327,7 +300,9 @@ function LibraryBookCard({
                   ? providerList.join(', ')
                   : providers.isPending
                     ? 'Loading providers…'
-                    : 'Unavailable offline'}
+                    : providers.isError
+                      ? 'Provider details unavailable'
+                      : 'No streaming providers listed'}
               </ThemedText>
             </>
           ) : (
@@ -571,9 +546,7 @@ export function AddBookContent({
                     Adaptations only
                   </ThemedText>
                   <View style={[styles.toggleTrack, adaptationsOnly && styles.toggleTrackActive]}>
-                    <View
-                      style={[styles.toggleThumb, adaptationsOnly && styles.toggleThumbActive]}
-                    />
+                  <View style={[styles.toggleThumb, adaptationsOnly && styles.toggleThumbActive]} />
                   </View>
                 </Pressable>
                 <Pressable
@@ -717,7 +690,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   headerTitle: {
+    color: '#143326',
     fontSize: 24,
+    fontWeight: 800,
     lineHeight: 32,
   },
   headerLogoSlot: {
@@ -746,6 +721,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.two,
     marginTop: -Spacing.one,
+  },
+  filterItem: {
+    alignItems: 'center',
+    flex: 1,
+    gap: Spacing.one,
   },
   adaptationToggle: {
     alignItems: 'center',
@@ -784,18 +764,23 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   filterButton: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderColor: '#D9DFDB',
     borderRadius: 999,
     borderWidth: 1,
-    flex: 1,
-    minHeight: 48,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.one,
-    paddingVertical: Spacing.one,
+    minHeight: 34,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two - Spacing.one,
+    width: '100%',
   },
-  filterButtonSelected: { backgroundColor: '#173E32', borderColor: '#173E32' },
+  filterButtonSelected: {
+    ...Depth.raised,
+    backgroundColor: '#A84732',
+    borderColor: '#A84732',
+  },
   filterButtonText: { color: '#173E32', fontSize: 13, lineHeight: 16, textAlign: 'center' },
   filterButtonSelectedText: {
     color: '#FFFFFF',
@@ -805,12 +790,6 @@ const styles = StyleSheet.create({
   },
   filterCount: {
     color: '#60646C',
-    fontSize: 12,
-    lineHeight: 14,
-    textAlign: 'center',
-  },
-  filterCountSelected: {
-    color: '#DCEBE5',
     fontSize: 12,
     lineHeight: 14,
     textAlign: 'center',
@@ -832,6 +811,7 @@ const styles = StyleSheet.create({
   },
   bookList: { gap: Spacing.three },
   bookCard: {
+    ...Depth.raised,
     backgroundColor: '#F8F4EE',
     borderRadius: 18,
     gap: Spacing.three,
@@ -850,6 +830,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
   },
   practiceButton: {
+    ...Depth.surface,
     backgroundColor: '#117579',
     borderRadius: 999,
     paddingHorizontal: Spacing.three,
@@ -857,6 +838,7 @@ const styles = StyleSheet.create({
   },
   practiceButtonText: { color: '#FFFFFF' },
   statusButton: {
+    ...Depth.surface,
     backgroundColor: '#FFFFFF',
     borderRadius: 999,
     paddingHorizontal: Spacing.three,
@@ -911,6 +893,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   searchButton: {
+    ...Depth.raised,
     alignItems: 'center',
     alignSelf: 'stretch',
     backgroundColor: '#117579',
@@ -929,29 +912,21 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   scanButton: {
+    ...Depth.floating,
     alignItems: 'center',
     backgroundColor: '#117579',
     borderRadius: 999,
-    elevation: 8,
     height: 56,
     justifyContent: 'center',
-    shadowColor: '#173E32',
-    shadowOffset: { height: 4, width: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
     width: 56,
   },
   surpriseButton: {
+    ...Depth.floating,
     alignItems: 'center',
     backgroundColor: '#A84732',
     borderRadius: 999,
-    elevation: 8,
     height: 56,
     justifyContent: 'center',
-    shadowColor: '#173E32',
-    shadowOffset: { height: 4, width: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
     width: 56,
   },
   floatingActions: {
@@ -962,6 +937,7 @@ const styles = StyleSheet.create({
   },
   results: { gap: Spacing.three, paddingBottom: 152 },
   resultCard: {
+    ...Depth.surface,
     alignItems: 'center',
     backgroundColor: '#F8F4EE',
     borderRadius: 14,
@@ -997,19 +973,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   permissionText: { color: '#A84732' },
-  privacyLink: {
-    alignItems: 'center',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
-  },
-  legalLinks: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    paddingTop: Spacing.two,
-  },
-  legalLink: { color: '#60646C', fontSize: 14, padding: Spacing.two },
   errorText: { color: '#A84732', textAlign: 'center' },
   lightText: { color: '#FFFFFF' },
   darkText: { color: '#173E32' },
